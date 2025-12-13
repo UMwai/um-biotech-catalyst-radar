@@ -43,32 +43,20 @@ class TickerMapper:
         self.reference_df = self._load_reference(reference_csv)
         self._build_lookup()
 
+    # Default reference file path (relative to this file)
+    DEFAULT_REFERENCE = Path(__file__).parent.parent.parent / "data" / "biotech_tickers.csv"
+
     def _load_reference(self, csv_path: str | Path | None) -> pd.DataFrame:
         """Load reference ticker data."""
+        # Use provided path
         if csv_path and Path(csv_path).exists():
             return pd.read_csv(csv_path)
 
-        # Fallback: fetch from NASDAQ screener (biotech sector)
-        # In production, cache this or use a static file
-        url = "https://api.nasdaq.com/api/screener/stocks"
-        params = {"tableonly": "true", "sector": "Health Care", "download": "true"}
-        headers = {"User-Agent": "Mozilla/5.0"}
+        # Use bundled reference file
+        if self.DEFAULT_REFERENCE.exists():
+            return pd.read_csv(self.DEFAULT_REFERENCE)
 
-        try:
-            import requests
-
-            response = requests.get(url, params=params, headers=headers, timeout=30)
-            data = response.json()
-            rows = data.get("data", {}).get("rows", [])
-            df = pd.DataFrame(rows)
-            if "symbol" in df.columns and "name" in df.columns:
-                return df[["symbol", "name"]].rename(
-                    columns={"symbol": "ticker", "name": "company_name"}
-                )
-        except Exception:
-            pass
-
-        # Ultimate fallback: empty DataFrame
+        # Fallback: empty DataFrame (will rely on manual mappings only)
         return pd.DataFrame(columns=["ticker", "company_name"])
 
     def _build_lookup(self) -> None:
