@@ -1,0 +1,78 @@
+name: Daily Data Refresh
+
+on:
+  schedule:
+    # Run at 6 AM UTC (1 AM EST) every day
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  refresh-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run data scraper
+        run: |
+          python -c "
+          from src.data.scraper import ClinicalTrialsScraper
+          from src.data.ticker_mapper import TickerMapper
+          from src.data.enricher import StockEnricher
+          import json
+          from datetime import datetime
+          from pathlib import Path
+
+          print('Starting daily data refresh...')
+
+          # Scrape trials
+          scraper = ClinicalTrialsScraper(months_ahead=3)
+          df = scraper.fetch_trials()
+          print(f'Fetched {len(df)} trials')
+
+          # Map tickers
+          mapper = TickerMapper()
+          df = mapper.map_all(df)
+          matched = df['ticker'].notna().sum()
+          print(f'Matched {matched} tickers')
+
+          # Enrich with stock data
+          enricher = StockEnricher()
+          df = enricher.enrich(df)
+          df = enricher.filter_small_caps(df)
+          print(f'After filtering: {len(df)} small-cap catalysts')
+
+          # Save to cache
+          Path('data').mkdir(exist_ok=True)
+          df.to_json('data/cached_catalysts.json', orient='records', date_format='iso')
+          print(f'Saved to data/cached_catalysts.json')
+
+          # Log summary
+          summary = {
+              'timestamp': datetime.utcnow().isoformat(),
+              'total_trials': len(df),
+              'matched_tickers': int(matched),
+              'small_caps': len(df)
+          }
+          print(f'Summary: {json.dumps(summary)}')
+          "
+
+      - name: Commit cached data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/cached_catalysts.json || true
+          git diff --staged --quiet || git commit -m "chore: daily data refresh $(date -u +%Y-%m-%d)"
+          git push || echo "No changes to push"

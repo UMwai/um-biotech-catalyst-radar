@@ -1,0 +1,4 @@
+# Placeholder for cached data files
+# This directory stores:
+# - cached_catalysts.json (daily refresh via GitHub Actions)
+# - nasdaq_biotech.csv (reference ticker data)
