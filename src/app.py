@@ -31,10 +31,11 @@ def main():
     with st.sidebar:
         st.header("Settings")
 
-        # Demo mode toggle
-        demo_mode = st.checkbox("Demo Mode (bypass paywall)", value=True)
-        if demo_mode:
-            st.session_state["is_subscribed"] = True
+        # Demo mode toggle (only in development)
+        if config.debug:
+            demo_mode = st.checkbox("Demo Mode (bypass paywall)", value=False)
+            if demo_mode:
+                st.session_state["is_subscribed"] = True
 
         # Filters
         st.subheader("Filters")
