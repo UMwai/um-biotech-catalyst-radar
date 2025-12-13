@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from ..data.enricher import StockEnricher
+from data.enricher import StockEnricher
 
 
 def render_price_chart(
