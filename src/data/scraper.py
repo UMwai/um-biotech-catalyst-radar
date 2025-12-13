@@ -1,7 +1,9 @@
 """ClinicalTrials.gov API v2 scraper for Phase 2/3 trials."""
 
+from __future__ import annotations
+
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Dict, List
 
 import pandas as pd
 import requests
@@ -29,8 +31,7 @@ class ClinicalTrialsScraper:
             "format": "json",
             "pageSize": 1000,
             "filter.overallStatus": "RECRUITING,ACTIVE_NOT_RECRUITING",
-            "filter.phase": "PHASE2,PHASE3",
-            "query.term": f"AREA[PrimaryCompletionDate]RANGE[{today.strftime('%Y-%m-%d')},{end_date.strftime('%Y-%m-%d')}]",
+            "query.term": f"AREA[PrimaryCompletionDate]RANGE[{today.strftime('%Y-%m-%d')},{end_date.strftime('%Y-%m-%d')}] AND (AREA[Phase]PHASE2 OR AREA[Phase]PHASE3)",
             "fields": "NCTId,BriefTitle,LeadSponsorName,Phase,PrimaryCompletionDate,Condition",
         }
 

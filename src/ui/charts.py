@@ -1,6 +1,8 @@
 """Price charts with catalyst date overlay."""
 
 from datetime import datetime
+from typing import Optional, Union
+
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -11,7 +13,7 @@ from data.enricher import StockEnricher
 
 def render_price_chart(
     ticker: str,
-    catalyst_date: datetime | pd.Timestamp | None = None,
+    catalyst_date: Optional[Union[datetime, pd.Timestamp]] = None,
     period: str = "6mo",
 ) -> None:
     """Render a price chart with catalyst date marked.

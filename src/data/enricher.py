@@ -1,5 +1,7 @@
 """Enrich trial data with stock market data from yfinance."""
 
+from typing import Optional
+
 import pandas as pd
 import yfinance as yf
 
@@ -97,7 +99,7 @@ class StockEnricher:
 
     def get_price_history(
         self, ticker: str, period: str = "6mo"
-    ) -> pd.DataFrame | None:
+    ) -> Optional[pd.DataFrame]:
         """Get price history for charting.
 
         Args:

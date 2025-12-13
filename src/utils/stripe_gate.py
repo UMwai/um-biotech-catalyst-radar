@@ -1,12 +1,14 @@
 """Stripe subscription gating logic."""
 
+from typing import Dict, Optional
+
 import streamlit as st
 
 # Note: In production, implement proper Stripe Customer Portal integration
 # This is a simplified version for MVP
 
 
-def check_subscription(email: str | None = None) -> bool:
+def check_subscription(email: Optional[str] = None) -> bool:
     """Check if user has active subscription.
 
     For MVP, this uses a simple session-based check.
@@ -33,7 +35,7 @@ def check_subscription(email: str | None = None) -> bool:
     return False
 
 
-def create_checkout_url(price_id: str, success_url: str, cancel_url: str) -> str | None:
+def create_checkout_url(price_id: str, success_url: str, cancel_url: str) -> Optional[str]:
     """Create Stripe Checkout session URL.
 
     Args:
@@ -59,7 +61,7 @@ def create_checkout_url(price_id: str, success_url: str, cancel_url: str) -> str
     return None
 
 
-def handle_webhook(payload: bytes, sig_header: str, webhook_secret: str) -> dict | None:
+def handle_webhook(payload: bytes, sig_header: str, webhook_secret: str) -> Optional[Dict]:
     """Handle Stripe webhook event.
 
     Args:

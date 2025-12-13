@@ -3,6 +3,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional, Union
 
 from dotenv import load_dotenv
 
@@ -27,7 +28,7 @@ class Config:
     cache_ttl_hours: int = 24
 
     @classmethod
-    def from_env(cls, env_file: str | Path | None = None) -> "Config":
+    def from_env(cls, env_file: Optional[Union[str, Path]] = None) -> "Config":
         """Load configuration from environment variables.
 
         Args:

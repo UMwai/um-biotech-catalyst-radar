@@ -1,6 +1,7 @@
 """Main dashboard view for Streamlit."""
 
 from datetime import datetime
+from typing import Optional
 
 import pandas as pd
 import streamlit as st
@@ -9,7 +10,7 @@ from .charts import render_price_chart
 
 
 def render_dashboard(
-    df: pd.DataFrame, is_subscribed: bool = False, payment_link: str | None = None
+    df: pd.DataFrame, is_subscribed: bool = False, payment_link: Optional[str] = None
 ) -> None:
     """Render the main catalyst dashboard.
 
@@ -147,7 +148,7 @@ def _render_stock_detail(row: pd.Series) -> None:
             st.markdown(f"**Market Cap:** ${row['market_cap']/1e9:.2f}B")
 
 
-def _render_paywall(gated_count: int, payment_link: str | None = None) -> None:
+def _render_paywall(gated_count: int, payment_link: Optional[str] = None) -> None:
     """Render subscription paywall."""
     st.warning(
         f"**{gated_count} more upcoming catalysts available**\n\n"

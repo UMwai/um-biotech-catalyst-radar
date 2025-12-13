@@ -45,6 +45,11 @@ cp .env.example .env
 streamlit run src/app.py
 ```
 
+## Generated Reports
+
+- **[Latest Catalyst Report](docs/catalyst_report.html)**: Interactive visualization of upcoming catalysts. Download this file to view in browser.
+- Run `python scripts/generate_report.py` to regenerate the report.
+
 ## Project Structure
 
 ```

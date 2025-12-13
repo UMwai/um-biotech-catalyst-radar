@@ -1,6 +1,7 @@
 """Fuzzy match sponsor names to stock tickers."""
 
 from pathlib import Path
+from typing import Optional, Union
 
 import pandas as pd
 from thefuzz import fuzz, process
@@ -33,7 +34,7 @@ class TickerMapper:
         "BioNTech": "BNTX",
     }
 
-    def __init__(self, reference_csv: str | Path | None = None):
+    def __init__(self, reference_csv: Optional[Union[str, Path]] = None):
         """Initialize with reference ticker data.
 
         Args:
@@ -46,7 +47,7 @@ class TickerMapper:
     # Default reference file path (relative to this file)
     DEFAULT_REFERENCE = Path(__file__).parent.parent.parent / "data" / "biotech_tickers.csv"
 
-    def _load_reference(self, csv_path: str | Path | None) -> pd.DataFrame:
+    def _load_reference(self, csv_path: Optional[Union[str, Path]]) -> pd.DataFrame:
         """Load reference ticker data."""
         # Use provided path
         if csv_path and Path(csv_path).exists():
@@ -73,7 +74,7 @@ class TickerMapper:
 
     def map_sponsor_to_ticker(
         self, sponsor_name: str, min_score: int = 80
-    ) -> tuple[str | None, int]:
+    ) -> tuple[Optional[str], int]:
         """Map a sponsor name to a stock ticker.
 
         Args:
