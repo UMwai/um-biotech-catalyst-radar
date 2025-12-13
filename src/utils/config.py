@@ -15,6 +15,7 @@ class Config:
     stripe_api_key: str
     stripe_price_id: str
     stripe_webhook_secret: str
+    stripe_payment_link: str
 
     # App settings
     app_env: str
@@ -44,6 +45,7 @@ class Config:
             stripe_api_key=os.getenv("STRIPE_API_KEY", ""),
             stripe_price_id=os.getenv("STRIPE_PRICE_ID", ""),
             stripe_webhook_secret=os.getenv("STRIPE_WEBHOOK_SECRET", ""),
+            stripe_payment_link=os.getenv("STRIPE_PAYMENT_LINK", ""),
             app_env=os.getenv("APP_ENV", "development"),
             debug=os.getenv("DEBUG", "false").lower() == "true",
         )

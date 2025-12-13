@@ -8,7 +8,9 @@ import streamlit as st
 from .charts import render_price_chart
 
 
-def render_dashboard(df: pd.DataFrame, is_subscribed: bool = False) -> None:
+def render_dashboard(
+    df: pd.DataFrame, is_subscribed: bool = False, payment_link: str | None = None
+) -> None:
     """Render the main catalyst dashboard.
 
     Args:
@@ -75,7 +77,7 @@ def render_dashboard(df: pd.DataFrame, is_subscribed: bool = False) -> None:
                     row = gated_df[gated_df["ticker"] == selected].iloc[0]
                     _render_stock_detail(row)
         else:
-            _render_paywall(len(gated_df))
+            _render_paywall(len(gated_df), payment_link=payment_link)
 
 
 def _render_table(df: pd.DataFrame) -> None:
@@ -145,17 +147,24 @@ def _render_stock_detail(row: pd.Series) -> None:
             st.markdown(f"**Market Cap:** ${row['market_cap']/1e9:.2f}B")
 
 
-def _render_paywall(gated_count: int) -> None:
+def _render_paywall(gated_count: int, payment_link: str | None = None) -> None:
     """Render subscription paywall."""
     st.warning(
         f"**{gated_count} more upcoming catalysts available**\n\n"
-        "Subscribe for $19/month to unlock:\n"
+        "Subscribe for $29/month to unlock:\n"
         "- All upcoming Phase 2/3 catalysts\n"
         "- Real-time price charts with catalyst overlay\n"
-        "- Daily email alerts for new catalysts\n"
-        "- Historical accuracy metrics"
+        "- 7-day free trial included"
     )
 
-    if st.button("Subscribe Now - $19/month", type="primary"):
-        # In production, redirect to Stripe checkout
-        st.info("Stripe checkout integration coming soon!")
+    if payment_link:
+        st.link_button(
+            "Start Free Trial - $29/month",
+            payment_link,
+            type="primary",
+            use_container_width=True,
+        )
+    else:
+        st.info(
+            "Payment coming soon! Set STRIPE_PAYMENT_LINK in environment variables."
+        )

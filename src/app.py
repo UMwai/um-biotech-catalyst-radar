@@ -72,7 +72,11 @@ def main():
     is_subscribed = check_subscription()
 
     # Render dashboard
-    render_dashboard(df, is_subscribed=is_subscribed)
+    render_dashboard(
+        df,
+        is_subscribed=is_subscribed,
+        payment_link=config.stripe_payment_link or None,
+    )
 
     # Footer
     st.divider()
