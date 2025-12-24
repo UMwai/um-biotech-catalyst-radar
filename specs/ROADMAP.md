@@ -124,7 +124,44 @@
 
 ---
 
-## Phase 3: Conversion & Retention (Week 5-6) ✅ **PARTIALLY COMPLETED EARLY**
+## Phase 2.5: Agentic UI & Intelligence (Week 5-6)
+
+### Objectives
+- Build chat agent for conversational catalyst discovery
+- Implement proactive alert agent (Pro tier)
+- Add AI explainer for trial analysis
+- Create deterministic UI patterns for agent interactions
+
+**Strategic Focus**: Create the only biotech catalyst tracker with conversational AI - eliminate learning curve, enable proactive monitoring
+
+### Deliverables
+
+| Task | Spec | Status | Owner |
+|------|------|--------|-------|
+| Chat agent UI (conversational search) | `features/07-chat-agent.md` | ⏳ | Dev |
+| Agent backend (keyword matching) | `features/07-chat-agent.md` | ⏳ | Dev |
+| Proactive alert agent (Pro tier) | `features/08-alert-agent.md` | ⏳ | Dev |
+| AI trial explainer (plain English) | `features/09-trial-explainer.md` | ⏳ | Dev |
+| Agent UI patterns (cards + actions) | `ui/agent-patterns.md` | ⏳ | Design |
+
+### Success Criteria
+- [ ] 80%+ chat queries successfully answered
+- [ ] <500ms agent response time
+- [ ] 50%+ of Pro users create saved searches
+- [ ] 90%+ user satisfaction with explanations
+- [ ] "Agent features" mentioned in 10+ user reviews
+
+**Implementation Notes**:
+- Rule-based agents (no LLM cost) - keyword matching, structured queries
+- 5 new files created (chat UI, agent backend, alerts, explainer, specs)
+- Pro tier differentiation: SMS/Slack alerts, unlimited saved searches
+- Query examples: "Show me oncology trials under $2B", "Phase 3 in next 60 days"
+- Strategic positioning: **"First biotech catalyst tracker with conversational AI"**
+- Future upgrade path: Claude API for Pro tier (optional Phase 5)
+
+---
+
+## Phase 3: Conversion & Retention (Week 7-8) ✅ **PARTIALLY COMPLETED EARLY**
 
 ### Objectives
 - ✅ Build email automation for trial conversion
@@ -265,6 +302,7 @@
 | **MVP Complete** | ✅ Done | $0 | 0 | Product ready |
 | **Supabase Deployed** | Week 2 | $0 | 0 | Free tier live |
 | **First Payment** | Week 4 | $19 | 1 | PMF signal |
+| **Agent Features Live** | Week 6 | $19-95 | 1-5 | AI differentiation |
 | **Reddit Traction** | Week 8 | $95 | 5 | 1K+ upvote post |
 | **$500 MRR** | Month 3 | $500 | 25 | 10% conversion |
 | **$1K MRR** | Month 4 | $1,000 | 50 | Ramen profitable |
@@ -283,22 +321,24 @@ graph TD
     C --> D[Stripe Integration]
     D --> E[Free Trial System]
     E --> F[Paywall]
-    F --> G[Pricing Strategy]
-    G --> H[Distribution Strategy]
-    H --> I[Reddit Launch]
-    I --> J[First Payment]
-    J --> K[Email Automation]
-    K --> L[Community Growth]
-    L --> M[Pro Tier]
-    M --> N[100 Subscribers]
+    F --> G[Agentic UI]
+    G --> H[Pricing Strategy]
+    H --> I[Distribution Strategy]
+    I --> J[Reddit Launch]
+    J --> K[First Payment]
+    K --> L[Email Automation]
+    L --> M[Community Growth]
+    M --> N[Pro Tier]
+    N --> O[100 Subscribers]
 ```
 
 **Bottlenecks to Watch**:
 1. **Supabase deployment** (Week 1-2): Edge Function stability, RLS policies working
 2. **Stripe integration** (Week 3-4): Webhook reliability, checkout flow
-3. **Reddit traction** (Week 5-8): Karma building, 1K+ upvote posts, avoiding bans
-4. **Trial → paid conversion** (Week 5-12): Optimizing onboarding, email sequence
-5. **Customer acquisition cost** (Month 2-6): Staying under $10 CAC with organic channels
+3. **Agentic UI** (Week 5-6): Query understanding accuracy, response time
+4. **Reddit traction** (Week 7-10): Karma building, 1K+ upvote posts, avoiding bans
+5. **Trial → paid conversion** (Week 7-12): Optimizing onboarding, email sequence
+6. **Customer acquisition cost** (Month 2-6): Staying under $10 CAC with organic channels
 
 ---
 
@@ -311,6 +351,8 @@ graph TD
 - **SendGrid** (transactional emails) - FREE tier (100 emails/day)
 - **Reddit/Twitter/Discord** (distribution) - FREE
 - Optional: **Posthog/Mixpanel** (analytics) - FREE tier
+- **Agentic UI**: No additional services needed (agents are rule-based)
+- **Future**: Claude API for Pro tier (optional Phase 5 upgrade) - Pay per query
 
 ### Internal Components
 - ClinicalTrials.gov API v2 (no auth required, free)
@@ -350,6 +392,8 @@ graph TD
 | **Free Trial Starts** | 10 | 50 | 200 | 500 |
 | **Paid Subscribers** | 1 | 5 | 25 | 100 |
 | **MRR** | $19 | $95 | $500 | $2,000 |
+| **Agent Queries** | 100 | 500 | 2,000 | 5,000 |
+| **Saved Searches Created** | 5 | 25 | 100 | 250 |
 
 ### Distribution Metrics
 | Metric | Month 1 | Month 2 | Month 3 | Stretch Goal |
@@ -396,7 +440,7 @@ graph TD
 ---
 
 **Last Updated**: 2025-12-24
-**Status**: 🚀 Phase 1 Complete → Deploying to Production + Starting Distribution
+**Status**: 🚀 Phase 1-2 Complete → Building Agentic UI → Distribution Launch
 **Next Review**: Daily for first 2 weeks, then weekly
 
-**Key Focus**: Deploy Supabase + launch Reddit distribution to get first 10 paying customers in 30 days
+**Key Focus**: Build agentic UI features (Phase 2.5) + Deploy Supabase + launch Reddit distribution with AI agent demos to get first 10 paying customers in 30 days

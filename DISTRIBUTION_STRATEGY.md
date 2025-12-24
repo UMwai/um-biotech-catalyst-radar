@@ -159,6 +159,62 @@ Here's what I found this week:
 
 ---
 
+#### Post Type 4: **AI Agent Demo** (Differentiation)
+```
+Title: "I built an AI agent that reads ClinicalTrials.gov so you don't have to"
+
+Body:
+Tired of spending 10 hours/week manually filtering trials?
+
+I built an AI agent that does it in 2 seconds.
+
+Just ask: "Show me oncology trials under $2B completing next 60 days"
+
+[Demo video: 30-second screen recording of chat agent]
+- Type question in plain English
+- Agent returns filtered results instantly
+- Each trial explained in simple terms
+- Click to save/alert
+
+No complex filters. No spreadsheets. No learning curve.
+
+Traditional tools (BioPharmCatalyst): $150/month + 30-minute setup
+My tool: $19/month early bird + 30-second setup
+
+Free trial (full access to AI agent): [link]
+
+This is the first biotech catalyst tracker with conversational AI.
+No more clicking through 15 dropdown menus.
+
+Example queries:
+- "Phase 3 trials in next 30 days"
+- "Small cap oncology catalysts"
+- "Trials like the one I saved last week"
+- "Alert me when new rare disease trials appear"
+
+Try it—you'll never go back to manual filtering.
+
+(Not financial advice - do your own research)
+```
+
+**Expected results**:
+- 2,000-5,000 upvotes (novel AI demo content)
+- 200-500 comments
+- 500-1,500 clicks to website
+- 50-150 trial signups (30-50% conversion due to demo)
+- 5-15 paid subscribers (10% trial→paid)
+
+**Frequency**: Week 2 launch, then monthly feature demos
+
+**Video demo specifics**:
+- 30-second screen recording
+- Show typing query → instant results
+- Highlight AI explanation for one trial
+- Show "Save" and "Alert" buttons
+- End with pricing comparison vs BioPharmCatalyst
+
+---
+
 **Reddit Growth Tactics**:
 
 1. **Engage first, promote later**
@@ -372,14 +428,17 @@ Here's what I learned about pre-catalyst run-ups:
 | 5 | Discord | Share report in 5 servers | 5 signups |
 | 8 | Reddit | Live catalyst alert post | 10 signups |
 | 10 | YouTube | Upload "How to find catalysts" video | SEO |
+| **12** | **Reddit** | **AI agent demo video** | **100 signups** |
 | 15 | Reddit | Educational post (step-by-step) | 50 signups |
 | 16-20 | Twitter | Engage with influencers | Relationships |
+| **18** | **Twitter** | **AI agent demo thread** | **20 signups** |
 | 22 | Reddit | Weekly report | 20 signups |
 | 25 | Blog | "BioPharmCatalyst alternative" SEO post | Organic |
+| **27** | **r/Biotechplays** | **"AI found me 3 catalysts in 10 seconds" post** | **50 signups** |
 | 29 | Reddit | "I analyzed 100 run-ups" post | 30 signups |
 | 30 | All | Month 1 recap + testimonials | Social proof |
 
-**Expected Month 1 results**: 100-200 trial signups, 10-20 paid subscribers
+**Expected Month 1 results**: 200-350 trial signups (2x boost from AI demos), 20-35 paid subscribers
 
 ---
 
@@ -449,6 +508,37 @@ Twitter badge (DM us for verification)
 ```
 
 **Expected**: Social proof → trust → conversions
+
+---
+
+### Loop 4: **"Share Your Best Agent Query" Contest**
+```
+Post-signup email:
+"What's the most useful question you've asked our AI agent?
+
+Share on Twitter/Reddit with #BiotechRadarAI for a chance to win:
+🏆 1st place: Free year ($348 value)
+🥈 2nd-5th place: 3 months free
+
+Winner announced weekly. Tag us!"
+```
+
+**Expected**: User-generated content → viral reach → social proof
+
+---
+
+### Loop 5: **"Agent Found Me a 10-Bagger" Testimonials**
+```
+After user saves/alerts catalyst:
+"Found something interesting? Share your success story!
+
+If your catalyst results in a winning trade, tweet:
+'@BiotechRadar's AI agent found me [ticker] before the run-up 🚀'
+
+Best stories featured on our site + 6 months free."
+```
+
+**Expected**: Success stories → credibility → conversions
 
 ---
 
