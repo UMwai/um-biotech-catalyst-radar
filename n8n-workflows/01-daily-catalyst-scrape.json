@@ -1,0 +1,418 @@
+{
+  "name": "Daily Catalyst Scrape",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        },
+        "timezone": "UTC"
+      },
+      "id": "cron-trigger",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://clinicaltrials.gov/api/v2/studies",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query.cond",
+              "value": ""
+            },
+            {
+              "name": "query.term",
+              "value": ""
+            },
+            {
+              "name": "filter.overallStatus",
+              "value": "RECRUITING|ACTIVE_NOT_RECRUITING|ENROLLING_BY_INVITATION"
+            },
+            {
+              "name": "filter.phase",
+              "value": "PHASE2|PHASE3"
+            },
+            {
+              "name": "pageSize",
+              "value": "100"
+            },
+            {
+              "name": "format",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "retry": {
+            "maxRetries": 3,
+            "retryDelay": 5000
+          }
+        }
+      },
+      "id": "http-request-trials",
+      "name": "HTTP Request - Fetch Trials",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300],
+      "notesInFlow": true,
+      "notes": "Fetches Phase 2/3 trials from ClinicalTrials.gov API v2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\nconst studies = $input.all()[0].json.studies || [];\n\nfor (const study of studies) {\n  const protocol = study.protocolSection;\n\n  // Extract fields with fallbacks\n  const nctId = protocol.identificationModule?.nctId;\n  const sponsor = protocol.sponsorCollaboratorsModule?.leadSponsor?.name || 'Unknown';\n  const phases = protocol.designModule?.phases || [];\n  const phase = phases.length > 0 ? phases[0] : 'UNKNOWN';\n  const completionDate = protocol.statusModule?.primaryCompletionDateStruct?.date;\n  const indication = (protocol.conditionsModule?.conditions || []).join(', ');\n  const status = protocol.statusModule?.overallStatus;\n\n  // Skip if missing critical data\n  if (!nctId || !completionDate) {\n    continue;\n  }\n\n  items.push({\n    json: {\n      nct_id: nctId,\n      sponsor: sponsor,\n      phase: phase,\n      completion_date: completionDate,\n      indication: indication,\n      status: status,\n      scraped_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn items;"
+      },
+      "id": "function-parse-trials",
+      "name": "Function - Parse Trials",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "notesInFlow": true,
+      "notes": "Extracts trial data: NCT ID, sponsor, phase, completion date, indication"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "combineOperation": "all"
+          },
+          "conditions": [
+            {
+              "id": "completion-not-empty",
+              "leftValue": "={{ $json.completion_date }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "within-90-days",
+              "leftValue": "={{ new Date($json.completion_date) }}",
+              "rightValue": "={{ new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            },
+            {
+              "id": "not-in-past",
+              "leftValue": "={{ new Date($json.completion_date) }}",
+              "rightValue": "={{ new Date() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            }
+          ]
+        }
+      },
+      "id": "filter-invalid-trials",
+      "name": "Filter - Remove Invalid Trials",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [850, 300],
+      "notesInFlow": true,
+      "notes": "Keep only trials completing within next 90 days"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO catalysts (\n  nct_id,\n  sponsor,\n  phase,\n  indication,\n  completion_date,\n  data_refreshed_at,\n  created_at\n)\nVALUES (\n  $1, $2, $3, $4, $5, NOW(), NOW()\n)\nON CONFLICT (nct_id)\nDO UPDATE SET\n  sponsor = EXCLUDED.sponsor,\n  phase = EXCLUDED.phase,\n  indication = EXCLUDED.indication,\n  completion_date = EXCLUDED.completion_date,\n  data_refreshed_at = NOW()\nRETURNING *;",
+        "queryParams": "={{ $json.nct_id }},={{ $json.sponsor }},={{ $json.phase }},={{ $json.indication }},={{ $json.completion_date }}",
+        "options": {}
+      },
+      "id": "postgres-upsert-catalysts",
+      "name": "PostgreSQL - Upsert Catalysts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 300],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Upsert trial data into catalysts table"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "include": "allFieldsIncludeNoFields"
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "notesInFlow": true,
+      "notes": "Combine all items for summary reporting"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO workflow_runs (\n  workflow_name,\n  started_at,\n  completed_at,\n  items_processed,\n  status\n)\nVALUES (\n  'daily_catalyst_scrape',\n  $1,\n  NOW(),\n  $2,\n  'success'\n);",
+        "queryParams": "={{ $('Cron Trigger').item.json.time }},={{ $('Aggregate Results').item.json.length }}"
+      },
+      "id": "postgres-log-run",
+      "name": "PostgreSQL - Log Workflow Run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Log successful workflow execution to workflow_runs table"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_BASE_URL }}/webhook/ticker-enrichment",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "trigger_source",
+              "value": "daily_scrape"
+            },
+            {
+              "name": "catalysts_count",
+              "value": "={{ $('Aggregate Results').item.json.length }}"
+            }
+          ]
+        }
+      },
+      "id": "webhook-trigger-enrichment",
+      "name": "Webhook - Trigger Enrichment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1650, 300],
+      "notesInFlow": true,
+      "notes": "Trigger ticker enrichment workflow"
+    },
+    {
+      "parameters": {
+        "channel": "#biotech-radar-alerts",
+        "text": "=✅ Daily catalyst scrape complete: {{ $('Aggregate Results').item.json.length }} trials updated",
+        "attachments": [
+          {
+            "color": "good",
+            "fields": {
+              "field": [
+                {
+                  "title": "Workflow",
+                  "value": "daily_catalyst_scrape",
+                  "short": true
+                },
+                {
+                  "title": "Duration",
+                  "value": "={{ Math.round(($now() - new Date($('Cron Trigger').item.json.time).getTime()) / 1000) }}s",
+                  "short": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1850, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack_webhook",
+          "name": "Slack - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Send success notification to Slack"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO workflow_runs (\n  workflow_name,\n  started_at,\n  completed_at,\n  items_processed,\n  status,\n  error_message\n)\nVALUES (\n  'daily_catalyst_scrape',\n  $1,\n  NOW(),\n  0,\n  'failed',\n  $2\n);",
+        "queryParams": "={{ $('Cron Trigger').item.json.time }},={{ $json.error?.message || 'Unknown error' }}"
+      },
+      "id": "postgres-log-error",
+      "name": "PostgreSQL - Log Error",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [650, 500],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Log workflow failure to database"
+    },
+    {
+      "parameters": {
+        "fromEmail": "alerts@biotech-radar.com",
+        "toEmail": "dev@example.com",
+        "subject": "🚨 Daily Catalyst Scrape Failed",
+        "emailFormat": "text",
+        "text": "=Workflow failed at: {{ $now() }}\nError: {{ $json.error?.message || 'Unknown error' }}\n\nPlease check the n8n logs for details."
+      },
+      "id": "email-error-alert",
+      "name": "Send Email - Error Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [850, 500],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Send email alert on workflow failure"
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Fetch Trials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Fetch Trials": {
+      "main": [
+        [
+          {
+            "node": "Function - Parse Trials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function - Parse Trials": {
+      "main": [
+        [
+          {
+            "node": "Filter - Remove Invalid Trials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Remove Invalid Trials": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Upsert Catalysts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Upsert Catalysts": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Log Workflow Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Log Workflow Run": {
+      "main": [
+        [
+          {
+            "node": "Webhook - Trigger Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Trigger Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Fetch Trials": {
+      "error": [
+        [
+          {
+            "node": "PostgreSQL - Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Log Error": {
+      "main": [
+        [
+          {
+            "node": "Send Email - Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "biotech-radar"
+  },
+  "id": "daily-catalyst-scrape",
+  "tags": [
+    {
+      "id": "biotech-radar",
+      "name": "biotech-radar"
+    }
+  ]
+}
