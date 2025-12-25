@@ -1,0 +1,672 @@
+{
+  "name": "Stripe Webhooks Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe-webhooks",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 400],
+      "webhookId": "stripe-webhooks",
+      "notesInFlow": true,
+      "notes": "Receives POST requests from Stripe webhook events"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify Stripe webhook signature\nconst crypto = require('crypto');\n\nconst signature = $input.item.headers['stripe-signature'];\nconst secret = $env.STRIPE_WEBHOOK_SECRET;\nconst payload = JSON.stringify($input.item.body);\n\nif (!signature) {\n  throw new Error('Missing Stripe signature');\n}\n\n// Extract timestamp and signature from header\nconst elements = signature.split(',');\nconst timestampElement = elements.find(e => e.startsWith('t='));\nconst signatureElement = elements.find(e => e.startsWith('v1='));\n\nif (!timestampElement || !signatureElement) {\n  throw new Error('Invalid signature format');\n}\n\nconst timestamp = timestampElement.split('=')[1];\nconst receivedSignature = signatureElement.split('=')[1];\n\n// Compute expected signature\nconst signedPayload = `${timestamp}.${payload}`;\nconst expectedSignature = crypto\n  .createHmac('sha256', secret)\n  .update(signedPayload)\n  .digest('hex');\n\n// Compare signatures\nif (receivedSignature !== expectedSignature) {\n  throw new Error('Invalid signature - webhook verification failed');\n}\n\n// Signature valid, return the event\nreturn {\n  json: {\n    verified: true,\n    event_id: $input.item.body.id,\n    event_type: $input.item.body.type,\n    event_data: $input.item.body.data,\n    created: $input.item.body.created\n  }\n};"
+      },
+      "id": "verify-signature",
+      "name": "Verify Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 400],
+      "notesInFlow": true,
+      "notes": "Verify Stripe webhook signature using HMAC SHA256"
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "rules": [
+            {
+              "outputKey": "checkout_completed",
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.event_type }}",
+                    "operation": "equals",
+                    "value2": "checkout.session.completed"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "subscription_created",
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.event_type }}",
+                    "operation": "equals",
+                    "value2": "customer.subscription.created"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "subscription_updated",
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.event_type }}",
+                    "operation": "equals",
+                    "value2": "customer.subscription.updated"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "subscription_deleted",
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.event_type }}",
+                    "operation": "equals",
+                    "value2": "customer.subscription.deleted"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "payment_succeeded",
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.event_type }}",
+                    "operation": "equals",
+                    "value2": "invoice.payment_succeeded"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "payment_failed",
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.event_type }}",
+                    "operation": "equals",
+                    "value2": "invoice.payment_failed"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "switch-event-type",
+      "name": "Switch - Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [650, 400],
+      "notesInFlow": true,
+      "notes": "Route webhook to appropriate handler based on event type"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract checkout session data\nconst session = $json.event_data.object;\n\nreturn {\n  json: {\n    customer_id: session.customer,\n    customer_email: session.customer_email || session.customer_details?.email,\n    subscription_id: session.subscription,\n    payment_status: session.payment_status,\n    amount_total: session.amount_total,\n    currency: session.currency,\n    mode: session.mode\n  }\n};"
+      },
+      "id": "parse-checkout-session",
+      "name": "Parse Checkout Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 100],
+      "notesInFlow": true,
+      "notes": "Extract customer and subscription data from checkout session"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Update user with Stripe customer ID\nUPDATE users\nSET stripe_customer_id = $1\nWHERE email = $2\nRETURNING id, email, stripe_customer_id;",
+        "queryParams": "={{ $json.customer_id }},={{ $json.customer_email }}"
+      },
+      "id": "update-user-customer-id",
+      "name": "Update User Customer ID",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 100],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Link Stripe customer to user account"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract subscription data\nconst subscription = $json.event_data.object;\nconst priceId = subscription.items?.data[0]?.price?.id;\n\nreturn {\n  json: {\n    subscription_id: subscription.id,\n    customer_id: subscription.customer,\n    status: subscription.status,\n    current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),\n    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),\n    cancel_at_period_end: subscription.cancel_at_period_end,\n    canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,\n    price_id: priceId,\n    plan_type: priceId === $env.STRIPE_PRICE_MONTHLY ? 'monthly' : 'annual'\n  }\n};"
+      },
+      "id": "parse-subscription-created",
+      "name": "Parse Subscription Created",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 250],
+      "notesInFlow": true,
+      "notes": "Extract subscription details"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Insert new subscription\nINSERT INTO subscriptions (\n  user_id,\n  stripe_subscription_id,\n  stripe_customer_id,\n  status,\n  plan_type,\n  current_period_start,\n  current_period_end,\n  cancel_at_period_end,\n  created_at\n)\nSELECT\n  u.id,\n  $1,\n  $2,\n  $3,\n  $4,\n  $5,\n  $6,\n  $7,\n  NOW()\nFROM users u\nWHERE u.stripe_customer_id = $2\nON CONFLICT (stripe_subscription_id)\nDO UPDATE SET\n  status = EXCLUDED.status,\n  current_period_end = EXCLUDED.current_period_end,\n  cancel_at_period_end = EXCLUDED.cancel_at_period_end\nRETURNING *;",
+        "queryParams": "={{ $json.subscription_id }},={{ $json.customer_id }},={{ $json.status }},={{ $json.plan_type }},={{ $json.current_period_start }},={{ $json.current_period_end }},={{ $json.cancel_at_period_end }}"
+      },
+      "id": "insert-subscription",
+      "name": "Insert Subscription",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 250],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Create subscription record in database"
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $('Parse Subscription Created').item.json.customer_email || 'dev@example.com' }}",
+        "subject": "Welcome to Biotech Radar! Your subscription is active",
+        "emailFormat": "html",
+        "html": "=<h1>Welcome to Biotech Radar!</h1>\n\n<p>Thank you for subscribing! Your {{ $json.plan_type }} subscription is now active.</p>\n\n<p><strong>Subscription Details:</strong></p>\n<ul>\n  <li>Plan: {{ $json.plan_type === 'monthly' ? '$29/month' : '$232/year' }}</li>\n  <li>Status: Active</li>\n  <li>Next billing date: {{ $json.current_period_end }}</li>\n</ul>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}\" style=\"background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    Access Dashboard →\n  </a>\n</p>\n\n<p>You can manage your subscription (update payment method, cancel, etc.) at any time from your account settings.</p>\n\n<p>Questions? Just reply to this email.</p>\n\n<p>— The Biotech Radar Team</p>"
+      },
+      "id": "email-subscription-confirmed",
+      "name": "Email - Subscription Confirmed",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1250, 250],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Send subscription confirmation email"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract subscription update data\nconst subscription = $json.event_data.object;\nconst priceId = subscription.items?.data[0]?.price?.id;\n\nreturn {\n  json: {\n    subscription_id: subscription.id,\n    customer_id: subscription.customer,\n    status: subscription.status,\n    current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),\n    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),\n    cancel_at_period_end: subscription.cancel_at_period_end,\n    canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,\n    price_id: priceId,\n    plan_type: priceId === $env.STRIPE_PRICE_MONTHLY ? 'monthly' : 'annual'\n  }\n};"
+      },
+      "id": "parse-subscription-updated",
+      "name": "Parse Subscription Updated",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 400],
+      "notesInFlow": true,
+      "notes": "Extract updated subscription details"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Update subscription\nUPDATE subscriptions\nSET\n  status = $1,\n  plan_type = $2,\n  current_period_start = $3,\n  current_period_end = $4,\n  cancel_at_period_end = $5,\n  canceled_at = $6,\n  updated_at = NOW()\nWHERE stripe_subscription_id = $7\nRETURNING *;",
+        "queryParams": "={{ $json.status }},={{ $json.plan_type }},={{ $json.current_period_start }},={{ $json.current_period_end }},={{ $json.cancel_at_period_end }},={{ $json.canceled_at }},={{ $json.subscription_id }}"
+      },
+      "id": "update-subscription",
+      "name": "Update Subscription",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 400],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Update subscription status in database"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract subscription deletion data\nconst subscription = $json.event_data.object;\n\nreturn {\n  json: {\n    subscription_id: subscription.id,\n    customer_id: subscription.customer,\n    status: 'canceled',\n    canceled_at: new Date(subscription.canceled_at * 1000).toISOString()\n  }\n};"
+      },
+      "id": "parse-subscription-deleted",
+      "name": "Parse Subscription Deleted",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 550],
+      "notesInFlow": true,
+      "notes": "Extract cancellation details"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Mark subscription as canceled\nUPDATE subscriptions\nSET\n  status = 'canceled',\n  canceled_at = $1,\n  updated_at = NOW()\nWHERE stripe_subscription_id = $2\nRETURNING *;",
+        "queryParams": "={{ $json.canceled_at }},={{ $json.subscription_id }}"
+      },
+      "id": "cancel-subscription",
+      "name": "Cancel Subscription",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 550],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Mark subscription as canceled in database"
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $('Cancel Subscription').item.json.user_email || 'dev@example.com' }}",
+        "subject": "Your subscription has been canceled",
+        "emailFormat": "html",
+        "html": "=<h1>Subscription Canceled</h1>\n\n<p>We're sorry to see you go!</p>\n\n<p>Your Biotech Radar subscription has been canceled. You'll continue to have access until the end of your current billing period.</p>\n\n<p>If you change your mind, you can resubscribe at any time:</p>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}/subscribe\" style=\"background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    Resubscribe →\n  </a>\n</p>\n\n<p>We'd love to hear your feedback. What could we have done better?</p>\n\n<p>— The Biotech Radar Team</p>"
+      },
+      "id": "email-subscription-canceled",
+      "name": "Email - Subscription Canceled",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1250, 550],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Send cancellation confirmation email"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract invoice payment success data\nconst invoice = $json.event_data.object;\n\nreturn {\n  json: {\n    subscription_id: invoice.subscription,\n    customer_id: invoice.customer,\n    invoice_id: invoice.id,\n    amount_paid: invoice.amount_paid,\n    currency: invoice.currency,\n    period_start: new Date(invoice.period_start * 1000).toISOString(),\n    period_end: new Date(invoice.period_end * 1000).toISOString()\n  }\n};"
+      },
+      "id": "parse-payment-succeeded",
+      "name": "Parse Payment Succeeded",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 700],
+      "notesInFlow": true,
+      "notes": "Extract successful payment details"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Update subscription status to active (in case it was past_due)\nUPDATE subscriptions\nSET\n  status = 'active',\n  current_period_start = $1,\n  current_period_end = $2,\n  updated_at = NOW()\nWHERE stripe_subscription_id = $3\nRETURNING *;",
+        "queryParams": "={{ $json.period_start }},={{ $json.period_end }},={{ $json.subscription_id }}"
+      },
+      "id": "update-payment-success",
+      "name": "Update Payment Success",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 700],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Update subscription status after successful payment"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract invoice payment failure data\nconst invoice = $json.event_data.object;\n\nreturn {\n  json: {\n    subscription_id: invoice.subscription,\n    customer_id: invoice.customer,\n    invoice_id: invoice.id,\n    amount_due: invoice.amount_due,\n    currency: invoice.currency,\n    attempt_count: invoice.attempt_count,\n    next_payment_attempt: invoice.next_payment_attempt ? new Date(invoice.next_payment_attempt * 1000).toISOString() : null\n  }\n};"
+      },
+      "id": "parse-payment-failed",
+      "name": "Parse Payment Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 850],
+      "notesInFlow": true,
+      "notes": "Extract failed payment details"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Mark subscription as past_due\nUPDATE subscriptions\nSET\n  status = 'past_due',\n  updated_at = NOW()\nWHERE stripe_subscription_id = $1\nRETURNING *;",
+        "queryParams": "={{ $json.subscription_id }}"
+      },
+      "id": "update-payment-failed",
+      "name": "Update Payment Failed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 850],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Mark subscription as past_due after payment failure"
+    },
+    {
+      "parameters": {
+        "fromEmail": "billing@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $('Update Payment Failed').item.json.user_email || 'dev@example.com' }}",
+        "subject": "Payment failed - Action required",
+        "emailFormat": "html",
+        "html": "=<h1>Payment Failed</h1>\n\n<p>We were unable to process your payment for Biotech Radar.</p>\n\n<p><strong>What happens next:</strong></p>\n<ul>\n  <li>We'll retry your payment automatically</li>\n  <li>Your access will continue for now</li>\n  <li>Please update your payment method to avoid service interruption</li>\n</ul>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}/settings/billing\" style=\"background: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    Update Payment Method →\n  </a>\n</p>\n\n<p>Questions? Reply to this email.</p>\n\n<p>— The Biotech Radar Team</p>"
+      },
+      "id": "email-payment-failed",
+      "name": "Email - Payment Failed",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1250, 850],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Alert user about failed payment"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"received\": true } }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1450, 400],
+      "notesInFlow": true,
+      "notes": "Send 200 OK response to Stripe"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Log webhook event for audit trail\nINSERT INTO webhook_events (\n  event_id,\n  event_type,\n  event_data,\n  processed_at\n)\nVALUES ($1, $2, $3, NOW())\nON CONFLICT (event_id) DO NOTHING;",
+        "queryParams": "={{ $json.event_id }},={{ $json.event_type }},={{ JSON.stringify($json.event_data) }}"
+      },
+      "id": "log-webhook-event",
+      "name": "Log Webhook Event",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [850, 1000],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Log all webhook events for audit purposes"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verify Signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Signature": {
+      "main": [
+        [
+          {
+            "node": "Switch - Event Type",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Webhook Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Event Type": {
+      "main": [
+        [
+          {
+            "node": "Parse Checkout Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Subscription Created",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Subscription Updated",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Subscription Deleted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Payment Succeeded",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Payment Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Checkout Session": {
+      "main": [
+        [
+          {
+            "node": "Update User Customer ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update User Customer ID": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Subscription Created": {
+      "main": [
+        [
+          {
+            "node": "Insert Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Subscription": {
+      "main": [
+        [
+          {
+            "node": "Email - Subscription Confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email - Subscription Confirmed": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Subscription Updated": {
+      "main": [
+        [
+          {
+            "node": "Update Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Subscription": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Subscription Deleted": {
+      "main": [
+        [
+          {
+            "node": "Cancel Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel Subscription": {
+      "main": [
+        [
+          {
+            "node": "Email - Subscription Canceled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email - Subscription Canceled": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Payment Succeeded": {
+      "main": [
+        [
+          {
+            "node": "Update Payment Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Payment Success": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Payment Failed": {
+      "main": [
+        [
+          {
+            "node": "Update Payment Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Payment Failed": {
+      "main": [
+        [
+          {
+            "node": "Email - Payment Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email - Payment Failed": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "biotech-radar"
+  },
+  "id": "stripe-webhooks-handler",
+  "tags": [
+    {
+      "id": "biotech-radar",
+      "name": "biotech-radar"
+    }
+  ]
+}

@@ -1,0 +1,1029 @@
+{
+  "name": "Trial Conversion Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        },
+        "timezone": "UTC"
+      },
+      "id": "cron-trigger",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  u.id AS user_id,\n  u.email,\n  u.trial_start_date,\n  u.trial_end_date,\n  EXTRACT(DAY FROM (NOW() - u.trial_start_date)) AS trial_day,\n  u.created_at\nFROM users u\nLEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'\nWHERE\n  u.trial_start_date IS NOT NULL\n  AND s.id IS NULL\n  AND u.trial_start_date >= NOW() - INTERVAL '14 days'\nORDER BY u.trial_start_date DESC;"
+      },
+      "id": "postgres-get-trial-users",
+      "name": "PostgreSQL - Get Trial Users",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [450, 400],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Fetch trial users without active subscriptions"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const item of $input.all()) {\n  const trialStartDate = new Date(item.json.trial_start_date);\n  const now = new Date();\n  const diffTime = Math.abs(now - trialStartDate);\n  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));\n\n  items.push({\n    json: {\n      ...item.json,\n      trial_day: diffDays,\n      trial_day_exact: diffTime / (1000 * 60 * 60 * 24),\n      days_remaining: 7 - diffDays\n    }\n  });\n}\n\nreturn items;"
+      },
+      "id": "function-calculate-trial-day",
+      "name": "Function - Calculate Trial Day",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 400],
+      "notesInFlow": true,
+      "notes": "Calculate trial day number and days remaining"
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "rules": [
+            {
+              "outputKey": "day1",
+              "conditions": {
+                "number": [
+                  {
+                    "value1": "={{ $json.trial_day }}",
+                    "operation": "equals",
+                    "value2": 1
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "day3",
+              "conditions": {
+                "number": [
+                  {
+                    "value1": "={{ $json.trial_day }}",
+                    "operation": "equals",
+                    "value2": 3
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "day5",
+              "conditions": {
+                "number": [
+                  {
+                    "value1": "={{ $json.trial_day }}",
+                    "operation": "equals",
+                    "value2": 5
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "day6",
+              "conditions": {
+                "number": [
+                  {
+                    "value1": "={{ $json.trial_day }}",
+                    "operation": "equals",
+                    "value2": 6
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "day7",
+              "conditions": {
+                "number": [
+                  {
+                    "value1": "={{ $json.trial_day }}",
+                    "operation": "equals",
+                    "value2": 7
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "day9",
+              "conditions": {
+                "number": [
+                  {
+                    "value1": "={{ $json.trial_day }}",
+                    "operation": "equals",
+                    "value2": 9
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "day14",
+              "conditions": {
+                "number": [
+                  {
+                    "value1": "={{ $json.trial_day }}",
+                    "operation": "equals",
+                    "value2": 14
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "switch-by-trial-day",
+      "name": "Switch - Route by Trial Day",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [850, 400],
+      "notesInFlow": true,
+      "notes": "Route users to appropriate email based on trial day"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) AS count\nFROM email_log\nWHERE user_id = $1\nAND email_type = $2;",
+        "queryParams": "={{ $json.user_id }},trial_day_1"
+      },
+      "id": "check-email-log-day1",
+      "name": "Check Email Log - Day 1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 100],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Check Email Log - Day 1').item.json.count }}",
+              "operation": "equals",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "filter-day1",
+      "name": "Filter - Day 1 Not Sent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $json.email }}",
+        "subject": "Welcome to Biotech Radar! 🧬",
+        "emailFormat": "html",
+        "html": "=<h1>Welcome to Biotech Radar!</h1>\n\n<p>Hi there,</p>\n\n<p>Thanks for starting your 7-day free trial. You now have access to:</p>\n\n<ul>\n  <li>✅ Phase 2/3 clinical trial catalysts</li>\n  <li>✅ Small-cap biotech stocks (<$5B market cap)</li>\n  <li>✅ 6-month price charts with catalyst overlays</li>\n  <li>✅ Daily data updates</li>\n</ul>\n\n<p><strong>Your trial expires on: {{ $json.trial_end_date }}</strong> ({{ $json.days_remaining }} days)</p>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}\" style=\"background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    Start Browsing Catalysts →\n  </a>\n</p>\n\n<hr>\n\n<p><strong>Quick Tips:</strong></p>\n<ol>\n  <li>Filter by \"Next 30 Days\" to find imminent catalysts</li>\n  <li>Click any ticker to see price charts</li>\n  <li>Check back daily for new trials</li>\n</ol>\n\n<p>Questions? Just reply to this email.</p>\n\n<p>— The Biotech Radar Team</p>"
+      },
+      "id": "sendgrid-day1",
+      "name": "SendGrid - Day 1 Welcome",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1450, 100],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Welcome email with onboarding tips"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (user_id, email_type, sent_at) VALUES ($1, $2, NOW());",
+        "queryParams": "={{ $json.user_id }},trial_day_1"
+      },
+      "id": "log-email-day1",
+      "name": "Log Email - Day 1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1650, 100],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) AS count\nFROM email_log\nWHERE user_id = $1\nAND email_type = $2;",
+        "queryParams": "={{ $json.user_id }},trial_day_3"
+      },
+      "id": "check-email-log-day3",
+      "name": "Check Email Log - Day 3",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 250],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Check Email Log - Day 3').item.json.count }}",
+              "operation": "equals",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "filter-day3",
+      "name": "Filter - Day 3 Not Sent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 250]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $json.email }}",
+        "subject": "See price run-ups before catalyst dates 📈",
+        "emailFormat": "html",
+        "html": "=<h1>Price Charts + Catalyst Overlays</h1>\n\n<p>Hi {{ $json.email }},</p>\n\n<p>You're 3 days into your trial! Have you tried our <strong>price chart feature</strong>?</p>\n\n<p>Click any ticker in the dashboard to see:</p>\n<ul>\n  <li>📊 6-month candlestick chart</li>\n  <li>🔔 Catalyst date marked on the chart</li>\n  <li>📈 30-day price change %</li>\n</ul>\n\n<p><strong>Pro tip:</strong> Look for stocks with tight consolidation 2-4 weeks before catalyst dates.</p>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}\" style=\"background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    Browse Charts Now →\n  </a>\n</p>\n\n<p>{{ $json.days_remaining }} days left in your trial.</p>\n\n<p>— Biotech Radar</p>"
+      },
+      "id": "sendgrid-day3",
+      "name": "SendGrid - Day 3 Feature Highlight",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1450, 250],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Feature highlight - price charts"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (user_id, email_type, sent_at) VALUES ($1, $2, NOW());",
+        "queryParams": "={{ $json.user_id }},trial_day_3"
+      },
+      "id": "log-email-day3",
+      "name": "Log Email - Day 3",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1650, 250],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) AS count\nFROM email_log\nWHERE user_id = $1\nAND email_type = $2;",
+        "queryParams": "={{ $json.user_id }},trial_day_5"
+      },
+      "id": "check-email-log-day5",
+      "name": "Check Email Log - Day 5",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 400],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Check Email Log - Day 5').item.json.count }}",
+              "operation": "equals",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "filter-day5",
+      "name": "Filter - Day 5 Not Sent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $json.email }}",
+        "subject": "How traders use Biotech Radar",
+        "emailFormat": "html",
+        "html": "=<h1>How Traders Use Biotech Radar</h1>\n\n<p>Hi {{ $json.email }},</p>\n\n<p>With just <strong>{{ $json.days_remaining }} days left</strong> in your trial, I wanted to share how other traders are using the platform:</p>\n\n<blockquote style=\"border-left: 4px solid #007bff; padding-left: 16px; font-style: italic; margin: 20px 0;\">\n  \"I scan the dashboard every Monday for catalysts 30-45 days out, then watch for run-ups. Saved me hours of manual searching.\"\n  <br>— Alex, Retail Trader\n</blockquote>\n\n<p><strong>Common strategies:</strong></p>\n<ol>\n  <li>Enter positions 3-4 weeks before catalyst date</li>\n  <li>Exit 1-2 days before data release (to avoid binary risk)</li>\n  <li>Focus on small caps with <$2B market cap (bigger % moves)</li>\n</ol>\n\n<p>Ready to subscribe? Lock in <strong>$29/month</strong> pricing:</p>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}/subscribe\" style=\"background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    Subscribe Now →\n  </a>\n</p>\n\n<p>Trial ends {{ $json.trial_end_date }}.</p>\n\n<p>— Biotech Radar</p>"
+      },
+      "id": "sendgrid-day5",
+      "name": "SendGrid - Day 5 Social Proof",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1450, 400],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Social proof and use cases"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (user_id, email_type, sent_at) VALUES ($1, $2, NOW());",
+        "queryParams": "={{ $json.user_id }},trial_day_5"
+      },
+      "id": "log-email-day5",
+      "name": "Log Email - Day 5",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1650, 400],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) AS count\nFROM email_log\nWHERE user_id = $1\nAND email_type = $2;",
+        "queryParams": "={{ $json.user_id }},trial_day_6"
+      },
+      "id": "check-email-log-day6",
+      "name": "Check Email Log - Day 6",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 550],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Check Email Log - Day 6').item.json.count }}",
+              "operation": "equals",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "filter-day6",
+      "name": "Filter - Day 6 Not Sent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 550]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $json.email }}",
+        "subject": "⏰ Your trial expires tomorrow",
+        "emailFormat": "html",
+        "html": "=<h1>Your Trial Expires Tomorrow</h1>\n\n<p>Hi {{ $json.email }},</p>\n\n<p><strong>Just a heads up:</strong> Your free trial ends in 24 hours.</p>\n\n<p>After tomorrow, you'll need a paid subscription to access:</p>\n<ul>\n  <li>Full catalyst dashboard</li>\n  <li>Price charts</li>\n  <li>Daily data updates</li>\n</ul>\n\n<p>Subscribe now to keep access:</p>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}/subscribe?plan=monthly\" style=\"background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin-right: 8px;\">\n    $29/month →\n  </a>\n  <a href=\"{{ $env.APP_URL }}/subscribe?plan=annual\" style=\"background: #6c757d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    $232/year (Save 33%) →\n  </a>\n</p>\n\n<p><em>Trial ends: {{ $json.trial_end_date }}</em></p>\n\n<p>— Biotech Radar</p>"
+      },
+      "id": "sendgrid-day6",
+      "name": "SendGrid - Day 6 Expiring Soon",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1450, 550],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Trial expiring warning (24 hours)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (user_id, email_type, sent_at) VALUES ($1, $2, NOW());",
+        "queryParams": "={{ $json.user_id }},trial_day_6"
+      },
+      "id": "log-email-day6",
+      "name": "Log Email - Day 6",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1650, 550],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) AS count\nFROM email_log\nWHERE user_id = $1\nAND email_type = $2;",
+        "queryParams": "={{ $json.user_id }},trial_day_7"
+      },
+      "id": "check-email-log-day7",
+      "name": "Check Email Log - Day 7",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 700],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Check Email Log - Day 7').item.json.count }}",
+              "operation": "equals",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "filter-day7",
+      "name": "Filter - Day 7 Not Sent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 700]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $json.email }}",
+        "subject": "Your trial has expired",
+        "emailFormat": "html",
+        "html": "=<h1>Your Trial Has Expired</h1>\n\n<p>Hi {{ $json.email }},</p>\n\n<p>Your 7-day free trial has ended. To continue accessing biotech catalyst data, subscribe below:</p>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}/subscribe?plan=monthly\" style=\"background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin-right: 8px;\">\n    Subscribe - $29/month →\n  </a>\n  <a href=\"{{ $env.APP_URL }}/subscribe?plan=annual\" style=\"background: #6c757d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    Subscribe - $232/year →\n  </a>\n</p>\n\n<p>Questions? Reply to this email.</p>\n\n<p>— Biotech Radar</p>"
+      },
+      "id": "sendgrid-day7",
+      "name": "SendGrid - Day 7 Trial Expired",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1450, 700],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Trial expired notification"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (user_id, email_type, sent_at) VALUES ($1, $2, NOW());",
+        "queryParams": "={{ $json.user_id }},trial_day_7"
+      },
+      "id": "log-email-day7",
+      "name": "Log Email - Day 7",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1650, 700],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) AS count\nFROM email_log\nWHERE user_id = $1\nAND email_type = $2;",
+        "queryParams": "={{ $json.user_id }},trial_day_9"
+      },
+      "id": "check-email-log-day9",
+      "name": "Check Email Log - Day 9",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 850],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Check Email Log - Day 9').item.json.count }}",
+              "operation": "equals",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "filter-day9",
+      "name": "Filter - Day 9 Not Sent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 850]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $json.email }}",
+        "subject": "Still interested in catalyst tracking?",
+        "emailFormat": "html",
+        "html": "=<h1>Still Interested?</h1>\n\n<p>Hi {{ $json.email }},</p>\n\n<p>I noticed you haven't subscribed yet. Is there anything holding you back?</p>\n\n<p>Common questions:</p>\n<ul>\n  <li><strong>Is the data accurate?</strong> Yes, sourced directly from ClinicalTrials.gov</li>\n  <li><strong>Can I cancel anytime?</strong> Absolutely, no long-term commitment</li>\n  <li><strong>Is there a money-back guarantee?</strong> Contact us within 7 days for a refund</li>\n</ul>\n\n<p>Ready to subscribe?</p>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}/subscribe\" style=\"background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    Get Started →\n  </a>\n</p>\n\n<p>— Biotech Radar</p>"
+      },
+      "id": "sendgrid-day9",
+      "name": "SendGrid - Day 9 Reminder",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1450, 850],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Optional reminder email"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (user_id, email_type, sent_at) VALUES ($1, $2, NOW());",
+        "queryParams": "={{ $json.user_id }},trial_day_9"
+      },
+      "id": "log-email-day9",
+      "name": "Log Email - Day 9",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1650, 850],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) AS count\nFROM email_log\nWHERE user_id = $1\nAND email_type = $2;",
+        "queryParams": "={{ $json.user_id }},trial_day_14"
+      },
+      "id": "check-email-log-day14",
+      "name": "Check Email Log - Day 14",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1050, 1000],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Check Email Log - Day 14').item.json.count }}",
+              "operation": "equals",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "filter-day14",
+      "name": "Filter - Day 14 Not Sent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 1000]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@biotech-radar.com",
+        "fromName": "Biotech Radar",
+        "toEmail": "={{ $json.email }}",
+        "subject": "We miss you!",
+        "emailFormat": "html",
+        "html": "=<h1>We Miss You!</h1>\n\n<p>Hi {{ $json.email }},</p>\n\n<p>It's been 2 weeks since your trial ended. If you're still interested in tracking biotech catalysts, we'd love to have you back.</p>\n\n<p>\n  <a href=\"{{ $env.APP_URL }}/subscribe\" style=\"background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;\">\n    Subscribe Now →\n  </a>\n</p>\n\n<p>Not interested? No problem — just ignore this email.</p>\n\n<p>— Biotech Radar</p>"
+      },
+      "id": "sendgrid-day14",
+      "name": "SendGrid - Day 14 Final",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1450, 1000],
+      "credentials": {
+        "smtp": {
+          "id": "smtp_sendgrid",
+          "name": "SMTP - SendGrid"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Final re-engagement email"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (user_id, email_type, sent_at) VALUES ($1, $2, NOW());",
+        "queryParams": "={{ $json.user_id }},trial_day_14"
+      },
+      "id": "log-email-day14",
+      "name": "Log Email - Day 14",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1650, 1000],
+      "credentials": {
+        "postgres": {
+          "id": "postgres_biotech_radar",
+          "name": "PostgreSQL - Biotech Radar"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Get Trial Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Get Trial Users": {
+      "main": [
+        [
+          {
+            "node": "Function - Calculate Trial Day",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function - Calculate Trial Day": {
+      "main": [
+        [
+          {
+            "node": "Switch - Route by Trial Day",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Route by Trial Day": {
+      "main": [
+        [
+          {
+            "node": "Check Email Log - Day 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Email Log - Day 3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Email Log - Day 5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Email Log - Day 6",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Email Log - Day 7",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Email Log - Day 9",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Email Log - Day 14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Email Log - Day 1": {
+      "main": [
+        [
+          {
+            "node": "Filter - Day 1 Not Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Day 1 Not Sent": {
+      "main": [
+        [
+          {
+            "node": "SendGrid - Day 1 Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendGrid - Day 1 Welcome": {
+      "main": [
+        [
+          {
+            "node": "Log Email - Day 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Email Log - Day 3": {
+      "main": [
+        [
+          {
+            "node": "Filter - Day 3 Not Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Day 3 Not Sent": {
+      "main": [
+        [
+          {
+            "node": "SendGrid - Day 3 Feature Highlight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendGrid - Day 3 Feature Highlight": {
+      "main": [
+        [
+          {
+            "node": "Log Email - Day 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Email Log - Day 5": {
+      "main": [
+        [
+          {
+            "node": "Filter - Day 5 Not Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Day 5 Not Sent": {
+      "main": [
+        [
+          {
+            "node": "SendGrid - Day 5 Social Proof",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendGrid - Day 5 Social Proof": {
+      "main": [
+        [
+          {
+            "node": "Log Email - Day 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Email Log - Day 6": {
+      "main": [
+        [
+          {
+            "node": "Filter - Day 6 Not Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Day 6 Not Sent": {
+      "main": [
+        [
+          {
+            "node": "SendGrid - Day 6 Expiring Soon",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendGrid - Day 6 Expiring Soon": {
+      "main": [
+        [
+          {
+            "node": "Log Email - Day 6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Email Log - Day 7": {
+      "main": [
+        [
+          {
+            "node": "Filter - Day 7 Not Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Day 7 Not Sent": {
+      "main": [
+        [
+          {
+            "node": "SendGrid - Day 7 Trial Expired",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendGrid - Day 7 Trial Expired": {
+      "main": [
+        [
+          {
+            "node": "Log Email - Day 7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Email Log - Day 9": {
+      "main": [
+        [
+          {
+            "node": "Filter - Day 9 Not Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Day 9 Not Sent": {
+      "main": [
+        [
+          {
+            "node": "SendGrid - Day 9 Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendGrid - Day 9 Reminder": {
+      "main": [
+        [
+          {
+            "node": "Log Email - Day 9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Email Log - Day 14": {
+      "main": [
+        [
+          {
+            "node": "Filter - Day 14 Not Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Day 14 Not Sent": {
+      "main": [
+        [
+          {
+            "node": "SendGrid - Day 14 Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendGrid - Day 14 Final": {
+      "main": [
+        [
+          {
+            "node": "Log Email - Day 14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "biotech-radar"
+  },
+  "id": "trial-conversion-automation",
+  "tags": [
+    {
+      "id": "biotech-radar",
+      "name": "biotech-radar"
+    }
+  ]
+}

@@ -7,16 +7,22 @@ import pandas as pd
 import streamlit as st
 
 from .charts import render_price_chart
+from .paywall import render_paywall
 
 
 def render_dashboard(
-    df: pd.DataFrame, is_subscribed: bool = False, payment_link: Optional[str] = None
+    df: pd.DataFrame,
+    is_subscribed: bool = False,
+    payment_link: Optional[str] = None,
+    user_email: Optional[str] = None,
 ) -> None:
     """Render the main catalyst dashboard.
 
     Args:
         df: DataFrame with trial and stock data
         is_subscribed: Whether user has active subscription
+        payment_link: Stripe payment link (deprecated, using trial system now)
+        user_email: User's email for trial management
     """
     st.header("Upcoming Biotech Catalysts")
 
@@ -65,7 +71,20 @@ def render_dashboard(
         st.divider()
         st.subheader("Upcoming Catalysts")
 
-        if is_subscribed:
+        # Check if user has access (trial or subscription)
+        # If user_email is provided, use trial system; otherwise fall back to is_subscribed
+        has_access = is_subscribed
+
+        if user_email:
+            # Use trial-based paywall
+            paywall_shown = render_paywall(user_email)
+            if paywall_shown:
+                return  # Stop rendering, paywall is blocking
+
+            # If no paywall shown, user has access (trial active or subscribed)
+            has_access = True
+
+        if has_access:
             _render_table(gated_df[display_cols])
 
             # Individual stock drill-down
@@ -78,6 +97,7 @@ def render_dashboard(
                     row = gated_df[gated_df["ticker"] == selected].iloc[0]
                     _render_stock_detail(row)
         else:
+            # Fallback to old paywall for non-trial users
             _render_paywall(len(gated_df), payment_link=payment_link)
 
 

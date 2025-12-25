@@ -4,6 +4,7 @@ import streamlit as st
 
 from data import ClinicalTrialsScraper, TickerMapper, StockEnricher
 from ui import render_dashboard
+from ui.trial_banner import render_trial_banner, render_trial_info_sidebar
 from utils import Config, check_subscription
 
 
@@ -27,6 +28,12 @@ def main():
         "Catch the run-up before data drops."
     )
 
+    # Show trial banner if user is logged in
+    # For MVP, we'll use a simple email in session state
+    # In production, replace with proper authentication
+    if "user_email" in st.session_state:
+        render_trial_banner(st.session_state["user_email"])
+
     # Sidebar for settings
     with st.sidebar:
         st.header("Settings")
@@ -36,6 +43,18 @@ def main():
             demo_mode = st.checkbox("Demo Mode (bypass paywall)", value=False)
             if demo_mode:
                 st.session_state["is_subscribed"] = True
+
+            # Trial testing controls
+            st.subheader("Trial Testing")
+            test_email = st.text_input("Test User Email", value="test@example.com")
+            if st.button("Set Test User"):
+                st.session_state["user_email"] = test_email
+                st.success(f"Test user set: {test_email}")
+                st.rerun()
+
+        # Show trial status in sidebar
+        if "user_email" in st.session_state:
+            render_trial_info_sidebar(st.session_state["user_email"])
 
         # Filters
         st.subheader("Filters")
@@ -71,11 +90,15 @@ def main():
     # Check subscription
     is_subscribed = check_subscription()
 
+    # Get user email for trial management
+    user_email = st.session_state.get("user_email")
+
     # Render dashboard
     render_dashboard(
         df,
         is_subscribed=is_subscribed,
         payment_link=config.stripe_payment_link or None,
+        user_email=user_email,
     )
 
     # Footer
