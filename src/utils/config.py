@@ -24,6 +24,17 @@ class Config:
     app_url: str
     debug: bool
 
+    # Notification settings
+    notification_provider: str
+    email_smtp_server: str
+    email_smtp_port: int
+    email_sender_user: str
+    email_sender_password: str
+    email_from_address: str
+    twilio_account_sid: str
+    twilio_auth_token: str
+    twilio_from_number: str
+
     # Data settings
     months_ahead: int = 3
     max_market_cap: float = 5_000_000_000  # $5B
@@ -53,6 +64,15 @@ class Config:
             app_env=os.getenv("APP_ENV", "development"),
             app_url=os.getenv("APP_URL", "http://localhost:8501"),
             debug=os.getenv("DEBUG", "false").lower() == "true",
+            notification_provider=os.getenv("NOTIFICATION_PROVIDER", "console"),
+            email_smtp_server=os.getenv("EMAIL_SMTP_SERVER", ""),
+            email_smtp_port=int(os.getenv("EMAIL_SMTP_PORT", "587")),
+            email_sender_user=os.getenv("EMAIL_SENDER_USER", ""),
+            email_sender_password=os.getenv("EMAIL_SENDER_PASSWORD", ""),
+            email_from_address=os.getenv("EMAIL_FROM_ADDRESS", ""),
+            twilio_account_sid=os.getenv("TWILIO_ACCOUNT_SID", ""),
+            twilio_auth_token=os.getenv("TWILIO_AUTH_TOKEN", ""),
+            twilio_from_number=os.getenv("TWILIO_FROM_NUMBER", ""),
         )
 
     @property
