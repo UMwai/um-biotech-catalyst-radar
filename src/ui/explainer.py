@@ -256,12 +256,8 @@ def _render_upgrade_cta() -> None:
         "- Early alert notifications"
     )
 
-    st.link_button(
-        "Upgrade to Pro",
-        "https://buy.stripe.com/test_PLACEHOLDER",  # TODO: Replace with real Stripe link
-        type="primary",
-        use_container_width=True,
-    )
+    if st.button("Upgrade to Pro", type="primary", use_container_width=True):
+        st.switch_page("pages/subscribe.py")
 
 
 def _add_to_watchlist(catalyst: Dict[str, Any]) -> None:
