@@ -1,7 +1,6 @@
 """Trial management and access control."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from .db import get_user_by_email as get_user
 from .db import get_user_subscription, update_user
@@ -122,7 +121,8 @@ class TrialManager:
         trial_end = trial_start + timedelta(days=self.TRIAL_DURATION_DAYS)
 
         update_user(
-            self.user["id"], {"trial_start_date": trial_start, "trial_end_date": trial_end}
+            self.user["id"],
+            {"trial_start_date": trial_start, "trial_end_date": trial_end},
         )
 
         # Refresh user data

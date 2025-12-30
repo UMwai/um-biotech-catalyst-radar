@@ -1,6 +1,6 @@
 """Tests for ExplainerAgent rule-based explanations."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 import pytest
 
 from src.agents.explainer_agent import ExplainerAgent
@@ -331,9 +331,7 @@ class TestExplanationQuality:
 
     def test_explanation_contains_specific_data(self, agent, oncology_catalyst):
         """Test that explanations reference specific catalyst data."""
-        explanation = agent.explain_trial(
-            oncology_catalyst, "enrollment_significance"
-        )
+        explanation = agent.explain_trial(oncology_catalyst, "enrollment_significance")
 
         # Should mention the actual enrollment number
         assert "800" in explanation

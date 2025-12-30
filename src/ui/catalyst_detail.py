@@ -7,7 +7,7 @@ including trial information, price charts, and AI-powered explanations.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import pandas as pd
 import streamlit as st
@@ -39,12 +39,14 @@ def render_catalyst_detail_page(
     st.title(f"🧬 {ticker} - {sponsor}")
 
     # Tabs for different sections
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📋 Overview",
-        "🤖 Ask AI",
-        "📈 Price Chart",
-        "🔍 Similar Catalysts",
-    ])
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "📋 Overview",
+            "🤖 Ask AI",
+            "📈 Price Chart",
+            "🔍 Similar Catalysts",
+        ]
+    )
 
     with tab1:
         _render_overview_tab(catalyst)
@@ -82,6 +84,7 @@ def render_catalyst_detail_sidebar(
 
         # Quick AI insights (compact)
         from .explainer import render_explainer_compact
+
         render_explainer_compact(catalyst, max_questions=3)
 
 
@@ -98,8 +101,8 @@ def _render_breadcrumbs(catalyst: Dict[str, Any]) -> None:
         f'<div style="color: #666; font-size: 0.9em; margin-bottom: 1em;">'
         f'<a href="/">Dashboard</a> → '
         f'<a href="/catalyst/{ticker}">Catalyst Detail</a> → '
-        f'<strong>{ticker}</strong>'
-        f'</div>',
+        f"<strong>{ticker}</strong>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 
@@ -131,7 +134,11 @@ def _render_overview_tab(catalyst: Dict[str, Any]) -> None:
             if isinstance(completion_date, str):
                 completion_date = datetime.fromisoformat(completion_date)
             date_str = completion_date.strftime("%Y-%m-%d")
-            days_until = (completion_date.date() if hasattr(completion_date, 'date') else completion_date - datetime.now().date()).days
+            days_until = (
+                completion_date.date()
+                if hasattr(completion_date, "date")
+                else completion_date - datetime.now().date()
+            ).days
             st.metric(
                 "Catalyst Date",
                 date_str,
@@ -144,7 +151,7 @@ def _render_overview_tab(catalyst: Dict[str, Any]) -> None:
         if market_cap and market_cap > 0:
             st.metric(
                 "Market Cap",
-                f"${market_cap/1e9:.2f}B",
+                f"${market_cap / 1e9:.2f}B",
             )
         else:
             st.metric("Market Cap", "N/A")
@@ -258,7 +265,7 @@ def _render_chart_tab(catalyst: Dict[str, Any]) -> None:
         )
 
     with col3:
-        chart_type = st.selectbox(
+        st.selectbox(
             "Chart Type",
             options=["Line", "Candlestick"],
             index=0,
@@ -275,9 +282,7 @@ def _render_chart_tab(catalyst: Dict[str, Any]) -> None:
         st.error(f"Error loading chart: {e}")
 
     # Additional chart info
-    st.caption(
-        f"*Price data from Yahoo Finance. Chart shows {period} of historical data.*"
-    )
+    st.caption(f"*Price data from Yahoo Finance. Chart shows {period} of historical data.*")
 
 
 def _render_similar_tab(catalyst: Dict[str, Any], user_tier: str) -> None:
@@ -327,14 +332,16 @@ def _render_similar_placeholder(catalyst: Dict[str, Any]) -> None:
     st.markdown("**Preview of Similar Catalyst Analysis:**")
 
     # Mock data for demonstration
-    mock_similar = pd.DataFrame({
-        "Ticker": ["MOCK1", "MOCK2", "MOCK3"],
-        "Phase": [catalyst.get("phase", "Phase 2")] * 3,
-        "Therapeutic Area": ["Oncology", "Oncology", "Rare Disease"],
-        "Outcome": ["Positive (+85%)", "Negative (-42%)", "Positive (+120%)"],
-        "Market Cap": ["$1.2B", "$850M", "$2.1B"],
-        "Similarity Score": ["92%", "88%", "85%"],
-    })
+    mock_similar = pd.DataFrame(
+        {
+            "Ticker": ["MOCK1", "MOCK2", "MOCK3"],
+            "Phase": [catalyst.get("phase", "Phase 2")] * 3,
+            "Therapeutic Area": ["Oncology", "Oncology", "Rare Disease"],
+            "Outcome": ["Positive (+85%)", "Negative (-42%)", "Positive (+120%)"],
+            "Market Cap": ["$1.2B", "$850M", "$2.1B"],
+            "Similarity Score": ["92%", "88%", "85%"],
+        }
+    )
 
     st.dataframe(mock_similar, use_container_width=True, hide_index=True)
 
@@ -359,7 +366,7 @@ def _render_key_metrics(catalyst: Dict[str, Any]) -> None:
 
     market_cap = catalyst.get("market_cap", 0)
     if market_cap and market_cap > 0:
-        st.markdown(f"**Market Cap:** ${market_cap/1e9:.2f}B")
+        st.markdown(f"**Market Cap:** ${market_cap / 1e9:.2f}B")
 
     condition = catalyst.get("condition", "")
     if condition:

@@ -20,7 +20,7 @@ Usage:
 
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 import json
@@ -37,9 +37,11 @@ logger = logging.getLogger(__name__)
 # DATA CLASSES
 # ============================================================================
 
+
 @dataclass
 class SavedSearch:
     """Saved search configuration."""
+
     id: str
     user_id: str
     name: str
@@ -52,6 +54,7 @@ class SavedSearch:
 @dataclass
 class NotificationPreferences:
     """User notification preferences."""
+
     user_id: str
     max_alerts_per_day: int
     quiet_hours_start: Optional[str]
@@ -67,6 +70,7 @@ class NotificationPreferences:
 # ============================================================================
 # ALERT AGENT
 # ============================================================================
+
 
 class AlertAgent:
     """
@@ -111,7 +115,7 @@ class AlertAgent:
             "matches_found": 0,
             "notifications_sent": 0,
             "errors": 0,
-            "started_at": datetime.now().isoformat()
+            "started_at": datetime.now().isoformat(),
         }
 
         try:
@@ -124,10 +128,7 @@ class AlertAgent:
                     stats["searches_checked"] += 1
 
                     # Find new matches since last check
-                    new_matches = self.find_new_matches(
-                        search.query_params,
-                        search.last_checked
-                    )
+                    new_matches = self.find_new_matches(search.query_params, search.last_checked)
 
                     if new_matches:
                         logger.info(
@@ -142,7 +143,7 @@ class AlertAgent:
                                 search_name=search.name,
                                 search_id=search.id,
                                 catalyst=catalyst,
-                                channels=search.notification_channels
+                                channels=search.notification_channels,
                             )
 
                             if success:
@@ -168,9 +169,7 @@ class AlertAgent:
             return stats
 
     def find_new_matches(
-        self,
-        search_params: Dict[str, Any],
-        last_checked: Optional[datetime]
+        self, search_params: Dict[str, Any], last_checked: Optional[datetime]
     ) -> List[Dict[str, Any]]:
         """
         Find catalysts matching search criteria added since last check.
@@ -234,7 +233,7 @@ class AlertAgent:
         search_name: str,
         search_id: str,
         catalyst: Dict[str, Any],
-        channels: List[str]
+        channels: List[str],
     ) -> bool:
         """
         Send alert notification via specified channels.
@@ -294,7 +293,7 @@ class AlertAgent:
                     catalyst_id=catalyst["id"],
                     user_id=user_id,
                     channels_used=sent_channels,
-                    alert_content=alert_message
+                    alert_content=alert_message,
                 )
                 logger.info(
                     f"✅ Sent notification to user {user_id} via {', '.join(sent_channels)}"
@@ -307,11 +306,7 @@ class AlertAgent:
             logger.error(f"Error sending notification: {e}")
             return False
 
-    def format_alert_message(
-        self,
-        catalyst: Dict[str, Any],
-        search_name: str
-    ) -> Dict[str, Any]:
+    def format_alert_message(self, catalyst: Dict[str, Any], search_name: str) -> Dict[str, Any]:
         """
         Format notification content for a catalyst alert.
 
@@ -359,7 +354,7 @@ class AlertAgent:
             "current_price": price_str,
             "enrollment": catalyst.get("enrollment"),
             "nct_id": catalyst.get("nct_id"),
-            "catalyst_id": catalyst.get("id")
+            "catalyst_id": catalyst.get("id"),
         }
 
     # ========================================================================
@@ -374,47 +369,51 @@ class AlertAgent:
 
         try:
             # Get user email
-            user_response = self.supabase.table("users").select("email").eq("id", user_id).single().execute()
+            user_response = (
+                self.supabase.table("users").select("email").eq("id", user_id).single().execute()
+            )
             user_email = user_response.data["email"]
 
             # Format email content
-            subject = f"🚀 New Catalyst Alert: {alert_message['ticker']} - {alert_message['search_name']}"
+            subject = (
+                f"🚀 New Catalyst Alert: {alert_message['ticker']} - {alert_message['search_name']}"
+            )
 
             html_content = f"""
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-                <h2 style="color: #2c3e50;">New Catalyst Match: {alert_message['ticker']}</h2>
+                <h2 style="color: #2c3e50;">New Catalyst Match: {alert_message["ticker"]}</h2>
 
-                <p>Your saved search "<strong>{alert_message['search_name']}</strong>" found a new match:</p>
+                <p>Your saved search "<strong>{alert_message["search_name"]}</strong>" found a new match:</p>
 
                 <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
-                    <h3 style="margin-top: 0; color: #495057;">{alert_message['ticker']} - {alert_message['sponsor']}</h3>
+                    <h3 style="margin-top: 0; color: #495057;">{alert_message["ticker"]} - {alert_message["sponsor"]}</h3>
 
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
                             <td style="padding: 8px 0;"><strong>Phase:</strong></td>
-                            <td>{alert_message['phase']}</td>
+                            <td>{alert_message["phase"]}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px 0;"><strong>Indication:</strong></td>
-                            <td>{alert_message['indication']}</td>
+                            <td>{alert_message["indication"]}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px 0;"><strong>Catalyst Date:</strong></td>
-                            <td>{alert_message['completion_date']}</td>
+                            <td>{alert_message["completion_date"]}</td>
                         </tr>
-                        {f'<tr><td style="padding: 8px 0;"><strong>Days Until:</strong></td><td>{alert_message["days_until"]} days</td></tr>' if alert_message.get('days_until') else ''}
+                        {f'<tr><td style="padding: 8px 0;"><strong>Days Until:</strong></td><td>{alert_message["days_until"]} days</td></tr>' if alert_message.get("days_until") else ""}
                         <tr>
                             <td style="padding: 8px 0;"><strong>Market Cap:</strong></td>
-                            <td>{alert_message['market_cap']}</td>
+                            <td>{alert_message["market_cap"]}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px 0;"><strong>Current Price:</strong></td>
-                            <td>{alert_message['current_price']}</td>
+                            <td>{alert_message["current_price"]}</td>
                         </tr>
                         <tr>
                             <td style="padding: 8px 0;"><strong>NCT ID:</strong></td>
-                            <td><a href="https://clinicaltrials.gov/study/{alert_message['nct_id']}">{alert_message['nct_id']}</a></td>
+                            <td><a href="https://clinicaltrials.gov/study/{alert_message["nct_id"]}">{alert_message["nct_id"]}</a></td>
                         </tr>
                     </table>
                 </div>
@@ -438,14 +437,17 @@ class AlertAgent:
                 "https://api.sendgrid.com/v3/mail/send",
                 headers={
                     "Authorization": f"Bearer {self.sendgrid_api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 },
                 json={
                     "personalizations": [{"to": [{"email": user_email}]}],
-                    "from": {"email": "alerts@biotechcatalyst.app", "name": "Biotech Catalyst Radar"},
+                    "from": {
+                        "email": "alerts@biotechcatalyst.app",
+                        "name": "Biotech Catalyst Radar",
+                    },
                     "subject": subject,
-                    "content": [{"type": "text/html", "value": html_content}]
-                }
+                    "content": [{"type": "text/html", "value": html_content}],
+                },
             )
 
             if response.status_code == 202:
@@ -487,8 +489,8 @@ class AlertAgent:
                 data={
                     "To": prefs.phone_number,
                     "From": self.twilio_from_number,
-                    "Body": sms_text
-                }
+                    "Body": sms_text,
+                },
             )
 
             if response.status_code == 201:
@@ -519,26 +521,44 @@ class AlertAgent:
                         "type": "header",
                         "text": {
                             "type": "plain_text",
-                            "text": f"🚀 New Catalyst: {alert_message['ticker']}"
-                        }
+                            "text": f"🚀 New Catalyst: {alert_message['ticker']}",
+                        },
                     },
                     {
                         "type": "section",
                         "fields": [
-                            {"type": "mrkdwn", "text": f"*Search:*\n{alert_message['search_name']}"},
-                            {"type": "mrkdwn", "text": f"*Phase:*\n{alert_message['phase']}"},
-                            {"type": "mrkdwn", "text": f"*Sponsor:*\n{alert_message['sponsor']}"},
-                            {"type": "mrkdwn", "text": f"*Catalyst Date:*\n{alert_message['completion_date']}"},
-                            {"type": "mrkdwn", "text": f"*Market Cap:*\n{alert_message['market_cap']}"},
-                            {"type": "mrkdwn", "text": f"*Price:*\n{alert_message['current_price']}"}
-                        ]
+                            {
+                                "type": "mrkdwn",
+                                "text": f"*Search:*\n{alert_message['search_name']}",
+                            },
+                            {
+                                "type": "mrkdwn",
+                                "text": f"*Phase:*\n{alert_message['phase']}",
+                            },
+                            {
+                                "type": "mrkdwn",
+                                "text": f"*Sponsor:*\n{alert_message['sponsor']}",
+                            },
+                            {
+                                "type": "mrkdwn",
+                                "text": f"*Catalyst Date:*\n{alert_message['completion_date']}",
+                            },
+                            {
+                                "type": "mrkdwn",
+                                "text": f"*Market Cap:*\n{alert_message['market_cap']}",
+                            },
+                            {
+                                "type": "mrkdwn",
+                                "text": f"*Price:*\n{alert_message['current_price']}",
+                            },
+                        ],
                     },
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"*Indication:* {alert_message['indication']}"
-                        }
+                            "text": f"*Indication:* {alert_message['indication']}",
+                        },
                     },
                     {
                         "type": "actions",
@@ -546,23 +566,26 @@ class AlertAgent:
                             {
                                 "type": "button",
                                 "text": {"type": "plain_text", "text": "View Details"},
-                                "url": "https://biotechcatalyst.app/dashboard"
+                                "url": "https://biotechcatalyst.app/dashboard",
                             },
                             {
                                 "type": "button",
-                                "text": {"type": "plain_text", "text": "View on ClinicalTrials.gov"},
-                                "url": f"https://clinicaltrials.gov/study/{alert_message['nct_id']}"
-                            }
-                        ]
-                    }
-                ]
+                                "text": {
+                                    "type": "plain_text",
+                                    "text": "View on ClinicalTrials.gov",
+                                },
+                                "url": f"https://clinicaltrials.gov/study/{alert_message['nct_id']}",
+                            },
+                        ],
+                    },
+                ],
             }
 
             # Send to Slack
             response = requests.post(
                 prefs.slack_webhook_url,
                 json=slack_payload,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
             )
 
             if response.status_code == 200:
@@ -583,7 +606,9 @@ class AlertAgent:
     def _fetch_active_searches(self) -> List[SavedSearch]:
         """Fetch all active saved searches."""
         try:
-            response = self.supabase.table("saved_searches").select("*").eq("active", True).execute()
+            response = (
+                self.supabase.table("saved_searches").select("*").eq("active", True).execute()
+            )
 
             return [
                 SavedSearch(
@@ -592,8 +617,10 @@ class AlertAgent:
                     name=row["name"],
                     query_params=row["query_params"],
                     notification_channels=row["notification_channels"],
-                    last_checked=datetime.fromisoformat(row["last_checked"].replace("Z", "+00:00")) if row.get("last_checked") else None,
-                    active=row["active"]
+                    last_checked=datetime.fromisoformat(row["last_checked"].replace("Z", "+00:00"))
+                    if row.get("last_checked")
+                    else None,
+                    active=row["active"],
                 )
                 for row in response.data
             ]
@@ -605,9 +632,9 @@ class AlertAgent:
     def _update_last_checked(self, search_id: str):
         """Update last_checked timestamp for a saved search."""
         try:
-            self.supabase.table("saved_searches").update({
-                "last_checked": datetime.now().isoformat()
-            }).eq("id", search_id).execute()
+            self.supabase.table("saved_searches").update(
+                {"last_checked": datetime.now().isoformat()}
+            ).eq("id", search_id).execute()
 
         except Exception as e:
             logger.error(f"Error updating last_checked: {e}")
@@ -615,11 +642,13 @@ class AlertAgent:
     def _is_duplicate_alert(self, search_id: str, catalyst_id: str) -> bool:
         """Check if alert was already sent for this catalyst."""
         try:
-            response = self.supabase.table("alert_notifications").select("id").eq(
-                "saved_search_id", search_id
-            ).eq(
-                "catalyst_id", catalyst_id
-            ).execute()
+            response = (
+                self.supabase.table("alert_notifications")
+                .select("id")
+                .eq("saved_search_id", search_id)
+                .eq("catalyst_id", catalyst_id)
+                .execute()
+            )
 
             return len(response.data) > 0
 
@@ -660,9 +689,13 @@ class AlertAgent:
     def _get_user_preferences(self, user_id: str) -> Optional[NotificationPreferences]:
         """Get user notification preferences."""
         try:
-            response = self.supabase.table("notification_preferences").select("*").eq(
-                "user_id", user_id
-            ).single().execute()
+            response = (
+                self.supabase.table("notification_preferences")
+                .select("*")
+                .eq("user_id", user_id)
+                .single()
+                .execute()
+            )
 
             if response.data:
                 return NotificationPreferences(**response.data)
@@ -679,18 +712,20 @@ class AlertAgent:
         catalyst_id: str,
         user_id: str,
         channels_used: List[str],
-        alert_content: Dict[str, Any]
+        alert_content: Dict[str, Any],
     ):
         """Log notification to database."""
         try:
-            self.supabase.table("alert_notifications").insert({
-                "saved_search_id": search_id,
-                "catalyst_id": catalyst_id,
-                "user_id": user_id,
-                "channels_used": channels_used,
-                "alert_content": alert_content,
-                "notification_sent_at": datetime.now().isoformat()
-            }).execute()
+            self.supabase.table("alert_notifications").insert(
+                {
+                    "saved_search_id": search_id,
+                    "catalyst_id": catalyst_id,
+                    "user_id": user_id,
+                    "channels_used": channels_used,
+                    "alert_content": alert_content,
+                    "notification_sent_at": datetime.now().isoformat(),
+                }
+            ).execute()
 
         except Exception as e:
             logger.error(f"Error logging notification: {e}")

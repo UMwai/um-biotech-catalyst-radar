@@ -101,9 +101,7 @@ class TickerMapper:
         if not self.ticker_choices:
             return None, 0
 
-        result = process.extractOne(
-            sponsor_name, self.ticker_choices, scorer=fuzz.token_sort_ratio
-        )
+        result = process.extractOne(sponsor_name, self.ticker_choices, scorer=fuzz.token_sort_ratio)
 
         if result and result[1] >= min_score:
             matched_name = result[0]
@@ -112,9 +110,7 @@ class TickerMapper:
 
         return None, 0
 
-    def map_all(
-        self, df: pd.DataFrame, sponsor_col: str = "sponsor"
-    ) -> pd.DataFrame:
+    def map_all(self, df: pd.DataFrame, sponsor_col: str = "sponsor") -> pd.DataFrame:
         """Map all sponsors in a DataFrame to tickers.
 
         Args:

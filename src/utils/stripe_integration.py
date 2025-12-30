@@ -21,13 +21,9 @@ class StripeIntegration:
         """
         self.config = config or Config.from_env()
         stripe.api_key = self.config.stripe_api_key
-        logger.info(
-            f"Stripe integration initialized in {self.config.app_env} mode"
-        )
+        logger.info(f"Stripe integration initialized in {self.config.app_env} mode")
 
-    def create_checkout_session(
-        self, user_email: str, plan: str = "monthly"
-    ) -> str:
+    def create_checkout_session(self, user_email: str, plan: str = "monthly") -> str:
         """Create Stripe Checkout session.
 
         Args:
@@ -67,9 +63,7 @@ class StripeIntegration:
                 metadata={"user_email": user_email, "plan": plan},
             )
 
-            logger.info(
-                f"Created checkout session for {user_email} ({plan}): {session.id}"
-            )
+            logger.info(f"Created checkout session for {user_email} ({plan}): {session.id}")
             return session.url
 
         except stripe.error.StripeError as e:
@@ -97,9 +91,7 @@ class StripeIntegration:
                 return_url=f"{self.config.app_url}/settings",
             )
 
-            logger.info(
-                f"Created portal session for customer {customer_id}: {session.id}"
-            )
+            logger.info(f"Created portal session for customer {customer_id}: {session.id}")
             return session.url
 
         except stripe.error.StripeError as e:
@@ -163,18 +155,14 @@ class StripeIntegration:
                 "current_period_end": subscription.current_period_end,
             }
 
-            logger.info(
-                f"Subscription status for {user_email}: {result['status']}"
-            )
+            logger.info(f"Subscription status for {user_email}: {result['status']}")
             return result
 
         except stripe.error.StripeError as e:
             logger.error(f"Failed to get subscription status: {e}")
             raise
 
-    def verify_webhook_signature(
-        self, payload: bytes, sig_header: str
-    ) -> Optional[stripe.Event]:
+    def verify_webhook_signature(self, payload: bytes, sig_header: str) -> Optional[stripe.Event]:
         """Verify Stripe webhook signature and construct event.
 
         Args:

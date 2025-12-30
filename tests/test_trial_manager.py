@@ -7,13 +7,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Mock psycopg2 before importing trial_manager
-sys.modules['psycopg2'] = MagicMock()
-sys.modules['psycopg2.pool'] = MagicMock()
-sys.modules['psycopg2.extras'] = MagicMock()
+sys.modules["psycopg2"] = MagicMock()
+sys.modules["psycopg2.pool"] = MagicMock()
+sys.modules["psycopg2.extras"] = MagicMock()
 
 # Set environment variable to prevent database init on import
 import os
-os.environ['LAZY_DB_INIT'] = 'true'
+
+os.environ["LAZY_DB_INIT"] = "true"
 
 from src.utils.trial_manager import TrialManager
 
@@ -68,9 +69,7 @@ def mock_subscription_active():
 def test_trial_active_day_3(mock_user_trial_active):
     """Test trial is active on day 3."""
     with patch("src.utils.trial_manager.get_user", return_value=mock_user_trial_active):
-        with patch(
-            "src.utils.trial_manager.get_user_subscription", return_value=None
-        ):
+        with patch("src.utils.trial_manager.get_user_subscription", return_value=None):
             trial_mgr = TrialManager("test@example.com")
 
             # Assertions
@@ -84,12 +83,8 @@ def test_trial_active_day_3(mock_user_trial_active):
 
 def test_trial_expired_day_8(mock_user_trial_expired):
     """Test trial is expired on day 8."""
-    with patch(
-        "src.utils.trial_manager.get_user", return_value=mock_user_trial_expired
-    ):
-        with patch(
-            "src.utils.trial_manager.get_user_subscription", return_value=None
-        ):
+    with patch("src.utils.trial_manager.get_user", return_value=mock_user_trial_expired):
+        with patch("src.utils.trial_manager.get_user_subscription", return_value=None):
             trial_mgr = TrialManager("expired@example.com")
 
             # Assertions
@@ -100,14 +95,10 @@ def test_trial_expired_day_8(mock_user_trial_expired):
             assert trial_mgr.should_show_paywall() is True
 
 
-def test_converted_trial_no_paywall(
-    mock_user_trial_expired, mock_subscription_active
-):
+def test_converted_trial_no_paywall(mock_user_trial_expired, mock_subscription_active):
     """Test converted trial doesn't show paywall."""
     # User with expired trial but has active subscription
-    with patch(
-        "src.utils.trial_manager.get_user", return_value=mock_user_trial_expired
-    ):
+    with patch("src.utils.trial_manager.get_user", return_value=mock_user_trial_expired):
         with patch(
             "src.utils.trial_manager.get_user_subscription",
             return_value=mock_subscription_active,
@@ -134,9 +125,7 @@ def test_trial_last_day():
     }
 
     with patch("src.utils.trial_manager.get_user", return_value=mock_user):
-        with patch(
-            "src.utils.trial_manager.get_user_subscription", return_value=None
-        ):
+        with patch("src.utils.trial_manager.get_user_subscription", return_value=None):
             trial_mgr = TrialManager("lastday@example.com")
 
             # Assertions
@@ -159,9 +148,7 @@ def test_start_trial():
 
     with patch("src.utils.trial_manager.get_user", return_value=mock_user):
         with patch("src.utils.trial_manager.update_user") as mock_update:
-            with patch(
-                "src.utils.trial_manager.get_user_subscription", return_value=None
-            ):
+            with patch("src.utils.trial_manager.get_user_subscription", return_value=None):
                 trial_mgr = TrialManager("newuser@example.com")
                 trial_mgr.start_trial()
 
@@ -210,12 +197,8 @@ def test_no_user():
 
 def test_trial_status_summary(mock_user_trial_active):
     """Test get_trial_status returns complete information."""
-    with patch(
-        "src.utils.trial_manager.get_user", return_value=mock_user_trial_active
-    ):
-        with patch(
-            "src.utils.trial_manager.get_user_subscription", return_value=None
-        ):
+    with patch("src.utils.trial_manager.get_user", return_value=mock_user_trial_active):
+        with patch("src.utils.trial_manager.get_user_subscription", return_value=None):
             trial_mgr = TrialManager("test@example.com")
             status = trial_mgr.get_trial_status()
 

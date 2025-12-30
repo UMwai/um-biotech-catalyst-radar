@@ -67,8 +67,4 @@ class Config:
     @property
     def is_configured(self) -> bool:
         """Check if Stripe is configured."""
-        return bool(
-            self.stripe_api_key
-            and self.stripe_price_monthly
-            and self.stripe_price_annual
-        )
+        return bool(self.stripe_api_key and self.stripe_price_monthly and self.stripe_price_annual)

@@ -1,6 +1,5 @@
 """Main dashboard view for Streamlit."""
 
-from datetime import datetime
 from typing import Optional
 
 import pandas as pd
@@ -111,13 +110,13 @@ def _render_table(df: pd.DataFrame) -> None:
     df_display = df.copy()
 
     if "completion_date" in df_display.columns:
-        df_display["completion_date"] = pd.to_datetime(
-            df_display["completion_date"]
-        ).dt.strftime("%Y-%m-%d")
+        df_display["completion_date"] = pd.to_datetime(df_display["completion_date"]).dt.strftime(
+            "%Y-%m-%d"
+        )
 
     if "market_cap" in df_display.columns:
         df_display["market_cap"] = df_display["market_cap"].apply(
-            lambda x: f"${x/1e9:.2f}B" if pd.notna(x) and x > 0 else "N/A"
+            lambda x: f"${x / 1e9:.2f}B" if pd.notna(x) and x > 0 else "N/A"
         )
 
     if "current_price" in df_display.columns:
@@ -165,7 +164,7 @@ def _render_stock_detail(row: pd.Series) -> None:
             st.markdown(f"**Current Price:** ${row['current_price']:.2f}")
 
         if pd.notna(row.get("market_cap")):
-            st.markdown(f"**Market Cap:** ${row['market_cap']/1e9:.2f}B")
+            st.markdown(f"**Market Cap:** ${row['market_cap'] / 1e9:.2f}B")
 
 
 def _render_paywall(gated_count: int, payment_link: Optional[str] = None) -> None:
@@ -186,6 +185,4 @@ def _render_paywall(gated_count: int, payment_link: Optional[str] = None) -> Non
             use_container_width=True,
         )
     else:
-        st.info(
-            "Payment coming soon! Set STRIPE_PAYMENT_LINK in environment variables."
-        )
+        st.info("Payment coming soon! Set STRIPE_PAYMENT_LINK in environment variables.")
