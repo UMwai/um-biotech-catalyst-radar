@@ -94,7 +94,7 @@ class TestAlertAgent:
 
         mock_query = Mock()
         mock_query.execute.return_value = mock_response
-        mock_query.not_.is_.return_value.not_.is_.return_value = mock_query
+        mock_query.not_.is_.return_value = mock_query
         mock_query.order.return_value = mock_query
         mock_query.eq.return_value = mock_query
 
@@ -114,7 +114,7 @@ class TestAlertAgent:
 
         mock_query = Mock()
         mock_query.execute.return_value = mock_response
-        mock_query.not_.is_.return_value.not_.is_.return_value = mock_query
+        mock_query.not_.is_.return_value = mock_query
         mock_query.order.return_value = mock_query
         mock_query.lt.return_value = mock_query
 
