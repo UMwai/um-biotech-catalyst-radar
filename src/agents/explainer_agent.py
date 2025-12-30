@@ -8,7 +8,7 @@ data-driven responses based on historical statistics.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from ..utils.historical_data import (
     classify_therapeutic_area,
@@ -117,18 +117,18 @@ class ExplainerAgent:
         )
 
         pattern_context = (
-            f"\n\nHistorically, small-cap biotech stocks begin their 'run-up' 60-90 days before "
-            f"major catalyst dates as anticipation builds. Institutional investors and retail "
-            f"traders position themselves ahead of the announcement, driving price appreciation. "
-            f"The stock often peaks 1-2 weeks before the actual data release as late-stage "
-            f"momentum traders enter."
+            "\n\nHistorically, small-cap biotech stocks begin their 'run-up' 60-90 days before "
+            "major catalyst dates as anticipation builds. Institutional investors and retail "
+            "traders position themselves ahead of the announcement, driving price appreciation. "
+            "The stock often peaks 1-2 weeks before the actual data release as late-stage "
+            "momentum traders enter."
         )
 
         risk_note = (
-            f"\n\n**Critical timing insight:** If results are positive, the stock typically "
-            f"gaps up 50-200% within hours of the announcement. If results are negative or "
-            f"mixed, the stock can fall 30-70%. This binary outcome is why completion dates "
-            f"drive trading strategy."
+            "\n\n**Critical timing insight:** If results are positive, the stock typically "
+            "gaps up 50-200% within hours of the announcement. If results are negative or "
+            "mixed, the stock can fall 30-70%. This binary outcome is why completion dates "
+            "drive trading strategy."
         )
 
         return timing_context + pattern_context + risk_note
@@ -148,7 +148,7 @@ class ExplainerAgent:
             advancement = (
                 f"Based on historical industry data, **{rate_str}** of {therapeutic_area.replace('_', ' ')} "
                 f"Phase 2 trials successfully advance to Phase 3. This means roughly 1 in "
-                f"{int(1/success_rate)} Phase 2 programs make it to the next stage."
+                f"{int(1 / success_rate)} Phase 2 programs make it to the next stage."
             )
         elif phase == "Phase 3":
             success_rate = stats["phase_3_success"]
@@ -199,7 +199,7 @@ class ExplainerAgent:
             run_up_potential = "15-40%"
             risk_desc = "moderate risk, moderate reward"
 
-        market_cap_str = f"${market_cap/1e9:.2f}B" if market_cap > 0 else "unknown"
+        market_cap_str = f"${market_cap / 1e9:.2f}B" if market_cap > 0 else "unknown"
 
         size_context = (
             f"With a market cap of **{market_cap_str}**, {ticker} is classified as a "
@@ -209,11 +209,11 @@ class ExplainerAgent:
         )
 
         mechanics = (
-            f"\n\n**Why size matters:** Smaller companies are more volatile because:\n"
-            f"1. Their entire valuation may depend on a single drug candidate\n"
-            f"2. Lower float means less liquidity and bigger price swings\n"
-            f"3. Institutional ownership is lower, giving retail traders more influence\n"
-            f"4. Options activity can create gamma squeezes near catalyst dates"
+            "\n\n**Why size matters:** Smaller companies are more volatile because:\n"
+            "1. Their entire valuation may depend on a single drug candidate\n"
+            "2. Lower float means less liquidity and bigger price swings\n"
+            "3. Institutional ownership is lower, giving retail traders more influence\n"
+            "4. Options activity can create gamma squeezes near catalyst dates"
         )
 
         strategy = (
@@ -229,7 +229,7 @@ class ExplainerAgent:
         """Explain what enrollment size means for trial quality."""
         enrollment = catalyst.get("enrollment")
         phase = catalyst.get("phase", "trial")
-        condition = catalyst.get("condition", "the condition")
+        catalyst.get("condition", "the condition")
 
         if not enrollment or enrollment == 0:
             return (
@@ -275,13 +275,13 @@ class ExplainerAgent:
         )
 
         quality_note = (
-            f"\n\n**Quality implications:** Larger enrollment generally means:\n"
-            f"1. Higher statistical confidence in results (less likely to be false positive/negative)\n"
-            f"2. Better ability to detect smaller treatment effects\n"
-            f"3. More comprehensive safety database\n"
-            f"4. Longer trial duration and higher costs\n\n"
-            f"However, enrollment size alone doesn't determine success - trial design, endpoint "
-            f"selection, and patient population matter just as much."
+            "\n\n**Quality implications:** Larger enrollment generally means:\n"
+            "1. Higher statistical confidence in results (less likely to be false positive/negative)\n"
+            "2. Better ability to detect smaller treatment effects\n"
+            "3. More comprehensive safety database\n"
+            "4. Longer trial duration and higher costs\n\n"
+            "However, enrollment size alone doesn't determine success - trial design, endpoint "
+            "selection, and patient population matter just as much."
         )
 
         return enrollment_context + quality_note
@@ -333,9 +333,7 @@ class ExplainerAgent:
 
         return timing_reco + pattern_details + strategy_note
 
-    def get_historical_context(
-        self, therapeutic_area: str, phase: str
-    ) -> Dict[str, Any]:
+    def get_historical_context(self, therapeutic_area: str, phase: str) -> Dict[str, Any]:
         """Fetch historical success rates for therapeutic area and phase.
 
         Args:
@@ -356,9 +354,7 @@ class ExplainerAgent:
             "all_stats": stats,
         }
 
-    def calculate_run_up_window(
-        self, completion_date: date, market_cap: float
-    ) -> Dict[str, Any]:
+    def calculate_run_up_window(self, completion_date: date, market_cap: float) -> Dict[str, Any]:
         """Analyze optimal entry timing for a catalyst.
 
         Args:

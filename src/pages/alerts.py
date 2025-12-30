@@ -8,14 +8,14 @@ This page allows users to:
 """
 
 import streamlit as st
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 import os
 
 from supabase import create_client, Client
 
 # Import UI components
 import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ui.saved_searches import render_saved_searches
 
@@ -35,9 +35,7 @@ def get_supabase_client() -> Client:
 def main():
     """Main entry point for alerts page."""
     st.set_page_config(
-        page_title="Alert Agent - Biotech Catalyst Radar",
-        page_icon="🔔",
-        layout="wide"
+        page_title="Alert Agent - Biotech Catalyst Radar", page_icon="🔔", layout="wide"
     )
 
     # Check if user is logged in
@@ -76,11 +74,7 @@ def main():
         st.divider()
 
     # Tabs
-    tab1, tab2, tab3 = st.tabs([
-        "📋 My Saved Searches",
-        "📬 Alert History",
-        "⚙️ Settings"
-    ])
+    tab1, tab2, tab3 = st.tabs(["📋 My Saved Searches", "📬 Alert History", "⚙️ Settings"])
 
     with tab1:
         render_saved_searches(user_id)
@@ -102,9 +96,14 @@ def render_alert_history(supabase: Client, user_id: str) -> None:
 
     # Fetch alert notifications
     try:
-        response = supabase.table("alert_notifications").select(
-            "*"
-        ).eq("user_id", user_id).order("notification_sent_at", desc=True).limit(50).execute()
+        response = (
+            supabase.table("alert_notifications")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("notification_sent_at", desc=True)
+            .limit(50)
+            .execute()
+        )
 
         notifications = response.data or []
     except Exception as e:
@@ -119,10 +118,14 @@ def render_alert_history(supabase: Client, user_id: str) -> None:
     col1, col2, col3 = st.columns(3)
 
     total_alerts = len(notifications)
-    alerts_today = len([
-        n for n in notifications
-        if datetime.fromisoformat(n["notification_sent_at"].replace("Z", "+00:00")).date() == datetime.now().date()
-    ])
+    alerts_today = len(
+        [
+            n
+            for n in notifications
+            if datetime.fromisoformat(n["notification_sent_at"].replace("Z", "+00:00")).date()
+            == datetime.now().date()
+        ]
+    )
     unacknowledged = len([n for n in notifications if not n.get("user_acknowledged")])
 
     with col1:
@@ -151,12 +154,16 @@ def _render_notification_card(supabase: Client, notification: Dict[str, Any]) ->
         with col1:
             # Alert title
             ack_icon = "✅" if acknowledged else "🔔"
-            st.markdown(f"### {ack_icon} {alert_content.get('ticker', 'N/A')} - {alert_content.get('search_name', 'Alert')}")
+            st.markdown(
+                f"### {ack_icon} {alert_content.get('ticker', 'N/A')} - {alert_content.get('search_name', 'Alert')}"
+            )
 
             # Alert details
-            st.markdown(f"**Phase:** {alert_content.get('phase', 'N/A')} | "
-                       f"**Catalyst Date:** {alert_content.get('completion_date', 'N/A')} | "
-                       f"**Market Cap:** {alert_content.get('market_cap', 'N/A')}")
+            st.markdown(
+                f"**Phase:** {alert_content.get('phase', 'N/A')} | "
+                f"**Catalyst Date:** {alert_content.get('completion_date', 'N/A')} | "
+                f"**Market Cap:** {alert_content.get('market_cap', 'N/A')}"
+            )
 
             st.caption(f"**Indication:** {alert_content.get('indication', 'N/A')}")
 
@@ -169,7 +176,11 @@ def _render_notification_card(supabase: Client, notification: Dict[str, Any]) ->
         with col2:
             # Acknowledge button
             if not acknowledged:
-                if st.button("Mark as Read", key=f"ack_{notification['id']}", use_container_width=True):
+                if st.button(
+                    "Mark as Read",
+                    key=f"ack_{notification['id']}",
+                    use_container_width=True,
+                ):
                     _acknowledge_notification(supabase, notification["id"])
                     st.rerun()
 
@@ -179,17 +190,16 @@ def _render_notification_card(supabase: Client, notification: Dict[str, Any]) ->
                 st.link_button(
                     "View Trial",
                     f"https://clinicaltrials.gov/study/{nct_id}",
-                    use_container_width=True
+                    use_container_width=True,
                 )
 
 
 def _acknowledge_notification(supabase: Client, notification_id: str) -> None:
     """Mark notification as acknowledged."""
     try:
-        supabase.table("alert_notifications").update({
-            "user_acknowledged": True,
-            "acknowledged_at": datetime.now().isoformat()
-        }).eq("id", notification_id).execute()
+        supabase.table("alert_notifications").update(
+            {"user_acknowledged": True, "acknowledged_at": datetime.now().isoformat()}
+        ).eq("id", notification_id).execute()
 
         st.success("Marked as read")
     except Exception as e:
@@ -202,7 +212,13 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
 
     # Fetch current preferences
     try:
-        response = supabase.table("notification_preferences").select("*").eq("user_id", user_id).single().execute()
+        response = (
+            supabase.table("notification_preferences")
+            .select("*")
+            .eq("user_id", user_id)
+            .single()
+            .execute()
+        )
         prefs = response.data
         has_prefs = True
     except:
@@ -217,7 +233,7 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
             "sms_enabled": False,
             "slack_enabled": False,
             "phone_number": None,
-            "slack_webhook_url": None
+            "slack_webhook_url": None,
         }
         has_prefs = False
 
@@ -229,7 +245,7 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
             min_value=1,
             max_value=50,
             value=prefs.get("max_alerts_per_day", 10),
-            help="Prevent notification overload by limiting daily alerts"
+            help="Prevent notification overload by limiting daily alerts",
         )
 
         st.markdown("#### Quiet Hours")
@@ -239,14 +255,18 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
         with col1:
             quiet_start = st.time_input(
                 "Start time",
-                value=datetime.strptime(prefs["quiet_hours_start"], "%H:%M:%S").time() if prefs.get("quiet_hours_start") else None,
-                help="No notifications will be sent during quiet hours"
+                value=datetime.strptime(prefs["quiet_hours_start"], "%H:%M:%S").time()
+                if prefs.get("quiet_hours_start")
+                else None,
+                help="No notifications will be sent during quiet hours",
             )
 
         with col2:
             quiet_end = st.time_input(
                 "End time",
-                value=datetime.strptime(prefs["quiet_hours_end"], "%H:%M:%S").time() if prefs.get("quiet_hours_end") else None
+                value=datetime.strptime(prefs["quiet_hours_end"], "%H:%M:%S").time()
+                if prefs.get("quiet_hours_end")
+                else None,
             )
 
         with col3:
@@ -260,9 +280,11 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
                     "America/Anchorage",
                     "Pacific/Honolulu",
                     "Europe/London",
-                    "Europe/Paris"
+                    "Europe/Paris",
                 ],
-                index=0 if not prefs.get("user_timezone") else [
+                index=0
+                if not prefs.get("user_timezone")
+                else [
                     "America/New_York",
                     "America/Chicago",
                     "America/Denver",
@@ -270,8 +292,8 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
                     "America/Anchorage",
                     "Pacific/Honolulu",
                     "Europe/London",
-                    "Europe/Paris"
-                ].index(prefs.get("user_timezone", "America/New_York"))
+                    "Europe/Paris",
+                ].index(prefs.get("user_timezone", "America/New_York")),
             )
 
         st.markdown("#### Channel Configuration")
@@ -283,7 +305,7 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
         sms_enabled = st.checkbox(
             "📱 SMS notifications (Pro only)",
             value=prefs.get("sms_enabled", False),
-            disabled=(user_tier != "pro")
+            disabled=(user_tier != "pro"),
         )
 
         if sms_enabled:
@@ -291,7 +313,7 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
                 "Phone number (E.164 format)",
                 value=prefs.get("phone_number", ""),
                 placeholder="+12025551234",
-                help="Include country code, e.g., +1 for US"
+                help="Include country code, e.g., +1 for US",
             )
         else:
             phone_number = prefs.get("phone_number")
@@ -300,7 +322,7 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
         slack_enabled = st.checkbox(
             "💬 Slack notifications (Pro only)",
             value=prefs.get("slack_enabled", False),
-            disabled=(user_tier != "pro")
+            disabled=(user_tier != "pro"),
         )
 
         if slack_enabled:
@@ -309,7 +331,7 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
                 value=prefs.get("slack_webhook_url", ""),
                 placeholder="https://hooks.slack.com/services/...",
                 type="password",
-                help="Create a webhook in your Slack workspace settings"
+                help="Create a webhook in your Slack workspace settings",
             )
         else:
             slack_webhook = prefs.get("slack_webhook_url")
@@ -331,13 +353,15 @@ def render_notification_settings(supabase: Client, user_id: str, user_tier: str)
                 "sms_enabled": sms_enabled and user_tier == "pro",
                 "slack_enabled": slack_enabled and user_tier == "pro",
                 "phone_number": phone_number if sms_enabled else None,
-                "slack_webhook_url": slack_webhook if slack_enabled else None
+                "slack_webhook_url": slack_webhook if slack_enabled else None,
             }
 
             try:
                 if has_prefs:
                     # Update existing preferences
-                    supabase.table("notification_preferences").update(settings_data).eq("user_id", user_id).execute()
+                    supabase.table("notification_preferences").update(settings_data).eq(
+                        "user_id", user_id
+                    ).execute()
                 else:
                     # Insert new preferences
                     supabase.table("notification_preferences").insert(settings_data).execute()
@@ -352,7 +376,12 @@ def render_quick_start_wizard(supabase: Client, user_id: str, user_tier: str) ->
     """Show quick start wizard for first-time users."""
     # Check if user has any saved searches
     try:
-        response = supabase.table("saved_searches").select("id", count="exact").eq("user_id", user_id).execute()
+        response = (
+            supabase.table("saved_searches")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
+            .execute()
+        )
         has_searches = (response.count or 0) > 0
     except:
         has_searches = False
@@ -387,7 +416,6 @@ def render_quick_start_wizard(supabase: Client, user_id: str, user_tier: str) ->
 
 
 # Import for type hints
-from typing import Dict, Any
 
 
 if __name__ == "__main__":

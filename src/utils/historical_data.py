@@ -12,7 +12,7 @@ Sources:
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Dict, Optional
+from typing import Dict
 
 
 # Phase transition success rates by therapeutic area
@@ -74,12 +74,47 @@ RUN_UP_PATTERNS = {
 
 # Therapeutic area keywords for classification
 THERAPEUTIC_AREA_KEYWORDS = {
-    "oncology": ["cancer", "tumor", "carcinoma", "lymphoma", "leukemia", "melanoma", "oncology"],
+    "oncology": [
+        "cancer",
+        "tumor",
+        "carcinoma",
+        "lymphoma",
+        "leukemia",
+        "melanoma",
+        "oncology",
+    ],
     "rare_disease": ["rare", "orphan", "genetic disorder", "inherited"],
-    "neurology": ["alzheimer", "parkinson", "epilepsy", "multiple sclerosis", "neuropathy", "neurology"],
-    "cardiovascular": ["heart", "cardiac", "hypertension", "cardiovascular", "coronary"],
-    "immunology": ["autoimmune", "rheumatoid", "lupus", "psoriasis", "crohn", "immunology"],
-    "infectious_disease": ["hiv", "hepatitis", "tuberculosis", "covid", "virus", "bacterial infection"],
+    "neurology": [
+        "alzheimer",
+        "parkinson",
+        "epilepsy",
+        "multiple sclerosis",
+        "neuropathy",
+        "neurology",
+    ],
+    "cardiovascular": [
+        "heart",
+        "cardiac",
+        "hypertension",
+        "cardiovascular",
+        "coronary",
+    ],
+    "immunology": [
+        "autoimmune",
+        "rheumatoid",
+        "lupus",
+        "psoriasis",
+        "crohn",
+        "immunology",
+    ],
+    "infectious_disease": [
+        "hiv",
+        "hepatitis",
+        "tuberculosis",
+        "covid",
+        "virus",
+        "bacterial infection",
+    ],
 }
 
 

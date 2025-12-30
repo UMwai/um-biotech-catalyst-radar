@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 import requests
@@ -59,19 +59,14 @@ class ClinicalTrialsScraper:
         df = df[df["status"].isin(self.ACTIVE_STATUSES)]
 
         # Filter by completion date (next N months)
-        df = df[
-            (df["completion_date"] >= today) &
-            (df["completion_date"] <= cutoff_date)
-        ]
+        df = df[(df["completion_date"] >= today) & (df["completion_date"] <= cutoff_date)]
 
         # Sort by completion date
         df = df.sort_values("completion_date").reset_index(drop=True)
 
         return df
 
-    def _fetch_page(
-        self, page_token: Optional[str] = None
-    ) -> tuple[List[Dict], Optional[str]]:
+    def _fetch_page(self, page_token: Optional[str] = None) -> tuple[List[Dict], Optional[str]]:
         """Fetch a single page of results."""
         params = {
             "format": "json",
@@ -116,23 +111,23 @@ class ClinicalTrialsScraper:
             if not any(p in self.TARGET_PHASES for p in phases):
                 continue
 
-            records.append({
-                "nct_id": id_module.get("nctId", ""),
-                "title": id_module.get("briefTitle", ""),
-                "sponsor": lead_sponsor.get("name", ""),
-                "sponsor_class": lead_sponsor.get("class", ""),
-                "phase": self._extract_phase(phases),
-                "status": status_module.get("overallStatus", ""),
-                "completion_date": completion_info.get("date", ""),
-                "condition": ", ".join(conditions_module.get("conditions", [])[:3]),
-            })
+            records.append(
+                {
+                    "nct_id": id_module.get("nctId", ""),
+                    "title": id_module.get("briefTitle", ""),
+                    "sponsor": lead_sponsor.get("name", ""),
+                    "sponsor_class": lead_sponsor.get("class", ""),
+                    "phase": self._extract_phase(phases),
+                    "status": status_module.get("overallStatus", ""),
+                    "completion_date": completion_info.get("date", ""),
+                    "condition": ", ".join(conditions_module.get("conditions", [])[:3]),
+                }
+            )
 
         df = pd.DataFrame(records)
 
         if not df.empty:
-            df["completion_date"] = pd.to_datetime(
-                df["completion_date"], errors="coerce"
-            )
+            df["completion_date"] = pd.to_datetime(df["completion_date"], errors="coerce")
             df = df.dropna(subset=["completion_date"])
 
         return df
@@ -154,4 +149,6 @@ if __name__ == "__main__":
     print(f"Found {len(df)} Phase 2/3 trials with upcoming catalysts")
     if not df.empty:
         print("\nTop 15 upcoming catalysts:")
-        print(df[["nct_id", "sponsor", "phase", "completion_date", "condition"]].head(15).to_string())
+        print(
+            df[["nct_id", "sponsor", "phase", "completion_date", "condition"]].head(15).to_string()
+        )

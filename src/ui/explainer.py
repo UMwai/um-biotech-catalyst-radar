@@ -136,9 +136,7 @@ def _render_explanation_card(
     _render_related_questions(question_type, questions)
 
 
-def _render_citation(
-    therapeutic_area: str, phase: str, question_type: str
-) -> None:
+def _render_citation(therapeutic_area: str, phase: str, question_type: str) -> None:
     """Render data source citation.
 
     Args:
@@ -208,9 +206,7 @@ def _render_feedback_buttons(question_type: str) -> None:
             _record_feedback(question_type, "negative")
 
 
-def _render_related_questions(
-    current_question: str, all_questions: list
-) -> None:
+def _render_related_questions(current_question: str, all_questions: list) -> None:
     """Suggest related questions based on current question.
 
     Args:
@@ -338,12 +334,14 @@ def _record_feedback(question_type: str, sentiment: str) -> None:
     user_email = st.session_state.get("user_email", "anonymous")
 
     # Store in session state for immediate UI feedback
-    st.session_state.feedback.append({
-        "question_type": question_type,
-        "sentiment": sentiment,
-        "timestamp": datetime.now(),
-        "user": user_email
-    })
+    st.session_state.feedback.append(
+        {
+            "question_type": question_type,
+            "sentiment": sentiment,
+            "timestamp": datetime.now(),
+            "user": user_email,
+        }
+    )
 
     # Send to analytics backend
     try:
@@ -361,8 +359,8 @@ def _record_feedback(question_type: str, sentiment: str) -> None:
             event_metadata={
                 "question_type": question_type,
                 "sentiment": sentiment,
-                "user_email_masked": user_email if user_email == "anonymous" else "****"
-            }
+                "user_email_masked": user_email if user_email == "anonymous" else "****",
+            },
         )
 
         # TODO: Add Supabase/PostHog integration here
@@ -373,9 +371,7 @@ def _record_feedback(question_type: str, sentiment: str) -> None:
         logger.error(f"Failed to log feedback analytics: {e}")
 
 
-def render_explainer_compact(
-    catalyst: Dict[str, Any], max_questions: int = 3
-) -> None:
+def render_explainer_compact(catalyst: Dict[str, Any], max_questions: int = 3) -> None:
     """Render a compact version of the explainer with limited questions.
 
     This is useful for embedding in dashboard cards or sidebars.

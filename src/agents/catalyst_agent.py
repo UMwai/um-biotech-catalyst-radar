@@ -13,8 +13,8 @@ Examples:
 """
 
 import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from datetime import datetime
+from typing import Dict, List, Any
 import logging
 
 from ..utils.db import get_catalysts
@@ -31,15 +31,44 @@ class CatalystAgent:
 
     # Therapeutic area keywords mapping
     THERAPEUTIC_AREAS = {
-        "oncology": ["oncology", "cancer", "tumor", "carcinoma", "melanoma", "leukemia", "lymphoma"],
-        "neurology": ["neurology", "neurological", "alzheimer", "parkinson", "multiple sclerosis", "ms", "epilepsy"],
+        "oncology": [
+            "oncology",
+            "cancer",
+            "tumor",
+            "carcinoma",
+            "melanoma",
+            "leukemia",
+            "lymphoma",
+        ],
+        "neurology": [
+            "neurology",
+            "neurological",
+            "alzheimer",
+            "parkinson",
+            "multiple sclerosis",
+            "ms",
+            "epilepsy",
+        ],
         "rare disease": ["rare disease", "orphan", "rare disorder"],
         "cardiology": ["cardiology", "cardiovascular", "heart", "cardiac"],
         "immunology": ["immunology", "immune", "autoimmune", "rheumatoid"],
-        "infectious disease": ["infectious", "virus", "viral", "bacterial", "covid", "hiv"],
+        "infectious disease": [
+            "infectious",
+            "virus",
+            "viral",
+            "bacterial",
+            "covid",
+            "hiv",
+        ],
         "metabolic": ["metabolic", "diabetes", "obesity", "nash", "nafld"],
         "respiratory": ["respiratory", "asthma", "copd", "pulmonary"],
-        "dermatology": ["dermatology", "skin", "psoriasis", "eczema", "atopic dermatitis"],
+        "dermatology": [
+            "dermatology",
+            "skin",
+            "psoriasis",
+            "eczema",
+            "atopic dermatitis",
+        ],
     }
 
     # Market cap keywords
@@ -65,7 +94,10 @@ class CatalystAgent:
         (r"q2\s+(\d{4})", lambda m: ("q2", int(m.group(1)))),
         (r"q3\s+(\d{4})", lambda m: ("q3", int(m.group(1)))),
         (r"q4\s+(\d{4})", lambda m: ("q4", int(m.group(1)))),
-        (r"january|february|march|april|may|june|july|august|september|october|november|december", "month"),
+        (
+            r"january|february|march|april|may|june|july|august|september|october|november|december",
+            "month",
+        ),
     ]
 
     def __init__(self):
@@ -163,7 +195,7 @@ class CatalystAgent:
                 phase=phase,
                 max_market_cap=max_market_cap,
                 min_ticker_confidence=80,
-                limit=self.default_limit
+                limit=self.default_limit,
             )
 
             # Apply additional filtering not supported by get_catalysts
@@ -207,8 +239,10 @@ class CatalystAgent:
                         }
                         start_month, end_month = quarter_ranges[quarter_num]
 
-                        if not (completion_date.year == year and
-                               start_month <= completion_date.month <= end_month):
+                        if not (
+                            completion_date.year == year
+                            and start_month <= completion_date.month <= end_month
+                        ):
                             continue
 
                 filtered_catalysts.append(catalyst)
@@ -221,10 +255,7 @@ class CatalystAgent:
             raise
 
     def format_response(
-        self,
-        catalysts: List[Dict[str, Any]],
-        user_query: str,
-        filters: Dict[str, Any]
+        self, catalysts: List[Dict[str, Any]], user_query: str, filters: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Structure response for chat UI.
 
@@ -245,12 +276,7 @@ class CatalystAgent:
         # Build summary message
         if not catalysts:
             message = self._format_no_results_message(filters)
-            return {
-                "type": "no_results",
-                "message": message,
-                "data": [],
-                "actions": []
-            }
+            return {"type": "no_results", "message": message, "data": [], "actions": []}
 
         # Build success message
         message = self._format_success_message(catalysts, filters)
@@ -267,13 +293,11 @@ class CatalystAgent:
             "message": message,
             "data": catalysts[:20],  # Limit to 20 for display
             "actions": actions,
-            "total_count": len(catalysts)
+            "total_count": len(catalysts),
         }
 
     def _format_success_message(
-        self,
-        catalysts: List[Dict[str, Any]],
-        filters: Dict[str, Any]
+        self, catalysts: List[Dict[str, Any]], filters: Dict[str, Any]
     ) -> str:
         """Format success message based on filters.
 
@@ -372,5 +396,5 @@ class CatalystAgent:
                 "type": "error",
                 "message": f"Sorry, I encountered an error processing your request. Please try again or simplify your query.\n\nError: {str(e)}",
                 "data": [],
-                "actions": []
+                "actions": [],
             }

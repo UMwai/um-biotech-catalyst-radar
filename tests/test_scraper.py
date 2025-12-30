@@ -1,7 +1,7 @@
 """Tests for ClinicalTrials.gov scraper."""
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.data.scraper import ClinicalTrialsScraper
 
@@ -42,34 +42,28 @@ class TestClinicalTrialsScraper:
     @patch("src.data.scraper.requests.get")
     def test_parse_response_empty(self, mock_get, scraper):
         """Test parsing empty API response."""
-        result = scraper._parse_response({"studies": []})
+        result = scraper._parse_studies([])
         assert result.empty
 
     @patch("src.data.scraper.requests.get")
     def test_parse_response_with_data(self, mock_get, scraper):
         """Test parsing API response with study data."""
-        mock_response = {
-            "studies": [
-                {
-                    "protocolSection": {
-                        "identificationModule": {
-                            "nctId": "NCT12345678",
-                            "briefTitle": "Test Study",
-                        },
-                        "sponsorCollaboratorsModule": {
-                            "leadSponsor": {"name": "Test Pharma Inc"}
-                        },
-                        "designModule": {"phases": ["PHASE3"]},
-                        "statusModule": {
-                            "primaryCompletionDateStruct": {"date": "2025-03-15"}
-                        },
-                        "conditionsModule": {"conditions": ["Cancer", "Tumor"]},
-                    }
+        mock_studies = [
+            {
+                "protocolSection": {
+                    "identificationModule": {
+                        "nctId": "NCT12345678",
+                        "briefTitle": "Test Study",
+                    },
+                    "sponsorCollaboratorsModule": {"leadSponsor": {"name": "Test Pharma Inc"}},
+                    "designModule": {"phases": ["PHASE3"]},
+                    "statusModule": {"primaryCompletionDateStruct": {"date": "2025-03-15"}},
+                    "conditionsModule": {"conditions": ["Cancer", "Tumor"]},
                 }
-            ]
-        }
+            }
+        ]
 
-        result = scraper._parse_response(mock_response)
+        result = scraper._parse_studies(mock_studies)
 
         assert len(result) == 1
         assert result.iloc[0]["nct_id"] == "NCT12345678"
