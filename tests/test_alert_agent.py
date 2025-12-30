@@ -11,7 +11,6 @@ Tests:
 
 import os
 import pytest
-from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, MagicMock
 
 # Set test environment variables
@@ -28,7 +27,7 @@ class TestAlertAgent:
     @pytest.fixture
     def mock_supabase(self):
         """Create a mock Supabase client."""
-        with patch('src.agents.alert_agent.create_client') as mock_create:
+        with patch("src.agents.alert_agent.create_client") as mock_create:
             mock_client = MagicMock()
             mock_create.return_value = mock_client
             yield mock_client
@@ -50,7 +49,7 @@ class TestAlertAgent:
             "completion_date": "2025-06-15",
             "market_cap": 2500000000,
             "current_price": 45.50,
-            "enrollment": 450
+            "enrollment": 450,
         }
 
         message = alert_agent.format_alert_message(catalyst, "Test Search")
@@ -75,7 +74,7 @@ class TestAlertAgent:
             "completion_date": None,
             "market_cap": None,
             "current_price": None,
-            "enrollment": 100
+            "enrollment": 100,
         }
 
         message = alert_agent.format_alert_message(catalyst, "Test Search")
@@ -90,12 +89,12 @@ class TestAlertAgent:
         mock_response = Mock()
         mock_response.data = [
             {"id": "1", "ticker": "BTCH", "phase": "Phase 3"},
-            {"id": "2", "ticker": "BTCH2", "phase": "Phase 3"}
+            {"id": "2", "ticker": "BTCH2", "phase": "Phase 3"},
         ]
 
         mock_query = Mock()
         mock_query.execute.return_value = mock_response
-        mock_query.not_.is_.return_value.not_.is_.return_value = mock_query
+        mock_query.not_.is_.return_value = mock_query
         mock_query.order.return_value = mock_query
         mock_query.eq.return_value = mock_query
 
@@ -111,13 +110,11 @@ class TestAlertAgent:
     def test_find_new_matches_market_cap_filter(self, alert_agent, mock_supabase):
         """Test finding matches with market cap filter."""
         mock_response = Mock()
-        mock_response.data = [
-            {"id": "1", "ticker": "BTCH", "market_cap": 2000000000}
-        ]
+        mock_response.data = [{"id": "1", "ticker": "BTCH", "market_cap": 2000000000}]
 
         mock_query = Mock()
         mock_query.execute.return_value = mock_response
-        mock_query.not_.is_.return_value.not_.is_.return_value = mock_query
+        mock_query.not_.is_.return_value = mock_query
         mock_query.order.return_value = mock_query
         mock_query.lt.return_value = mock_query
 
@@ -161,7 +158,7 @@ class TestAlertAgent:
 
         assert is_duplicate is False
 
-    @patch('src.agents.alert_agent.requests.post')
+    @patch("src.agents.alert_agent.requests.post")
     def test_send_email_success(self, mock_post, alert_agent, mock_supabase):
         """Test successful email sending."""
         # Mock user response
@@ -181,7 +178,7 @@ class TestAlertAgent:
             "completion_date": "2025-06-15",
             "market_cap": "$2.50B",
             "current_price": "$45.50",
-            "nct_id": "NCT12345678"
+            "nct_id": "NCT12345678",
         }
 
         result = alert_agent._send_email("user-123", alert_message)
@@ -189,7 +186,7 @@ class TestAlertAgent:
         assert result is True
         assert mock_post.called
 
-    @patch('src.agents.alert_agent.requests.post')
+    @patch("src.agents.alert_agent.requests.post")
     def test_send_email_failure(self, mock_post, alert_agent, mock_supabase):
         """Test email sending failure."""
         # Mock user response
@@ -248,7 +245,7 @@ class TestSavedSearch:
             query_params={"phase": "Phase 3"},
             notification_channels=["email"],
             last_checked=None,
-            active=True
+            active=True,
         )
 
         assert search.id == "search-123"
@@ -272,7 +269,7 @@ class TestNotificationPreferences:
             sms_enabled=False,
             slack_enabled=False,
             phone_number=None,
-            slack_webhook_url=None
+            slack_webhook_url=None,
         )
 
         assert prefs.user_id == "user-123"

@@ -116,7 +116,7 @@ def main():
                 </p>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
         st.markdown("")  # Spacing
@@ -140,7 +140,7 @@ def main():
             </p>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 

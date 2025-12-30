@@ -60,16 +60,12 @@ def render_trial_banner(user_email: str) -> None:
 
     # Trial expired
     elif trial_mgr.is_trial_expired():
-        st.error(
-            "❌ **Your trial has expired.** Subscribe to continue accessing catalyst data."
-        )
+        st.error("❌ **Your trial has expired.** Subscribe to continue accessing catalyst data.")
 
         # Show subscribe button
         col1, col2 = st.columns([3, 1])
         with col2:
-            if st.button(
-                "View Subscription Options →", type="primary", use_container_width=True
-            ):
+            if st.button("View Subscription Options →", type="primary", use_container_width=True):
                 st.session_state["show_subscribe_page"] = True
                 st.rerun()
 

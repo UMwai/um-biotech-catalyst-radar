@@ -83,9 +83,7 @@ def main():
         df = df[df["phase"].isin(phase_filter)]
 
     if "days_until" in df.columns:
-        df = df[
-            (df["days_until"] >= days_filter[0]) & (df["days_until"] <= days_filter[1])
-        ]
+        df = df[(df["days_until"] >= days_filter[0]) & (df["days_until"] <= days_filter[1])]
 
     # Check subscription
     is_subscribed = check_subscription()

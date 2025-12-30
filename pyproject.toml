@@ -1,0 +1,18 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# Ignore rules that have pre-existing violations
+# TODO: Fix these in a dedicated cleanup PR
+ignore = [
+    "E722",   # bare-except - many existing violations
+    "F401",   # unused-import - false positives for __all__ exports
+    "F821",   # undefined-name - missing type imports
+    "F841",   # unused-variable - some intentional assignments
+    "E402",   # module-import-not-at-top - test setup patterns
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

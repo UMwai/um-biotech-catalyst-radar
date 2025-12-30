@@ -7,7 +7,7 @@ in expandable cards.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import streamlit as st
 
@@ -131,9 +131,7 @@ def _render_explanation_card(
     _render_related_questions(question_type, questions)
 
 
-def _render_citation(
-    therapeutic_area: str, phase: str, question_type: str
-) -> None:
+def _render_citation(therapeutic_area: str, phase: str, question_type: str) -> None:
     """Render data source citation.
 
     Args:
@@ -203,9 +201,7 @@ def _render_feedback_buttons(question_type: str) -> None:
             _record_feedback(question_type, "negative")
 
 
-def _render_related_questions(
-    current_question: str, all_questions: list
-) -> None:
+def _render_related_questions(current_question: str, all_questions: list) -> None:
     """Suggest related questions based on current question.
 
     Args:
@@ -330,18 +326,18 @@ def _record_feedback(question_type: str, sentiment: str) -> None:
     if "feedback" not in st.session_state:
         st.session_state.feedback = []
 
-    st.session_state.feedback.append({
-        "question_type": question_type,
-        "sentiment": sentiment,
-        "timestamp": st.session_state.get("user_email", "anonymous"),
-    })
+    st.session_state.feedback.append(
+        {
+            "question_type": question_type,
+            "sentiment": sentiment,
+            "timestamp": st.session_state.get("user_email", "anonymous"),
+        }
+    )
 
     # TODO: In production, send to analytics backend (Supabase, PostHog, etc.)
 
 
-def render_explainer_compact(
-    catalyst: Dict[str, Any], max_questions: int = 3
-) -> None:
+def render_explainer_compact(catalyst: Dict[str, Any], max_questions: int = 3) -> None:
     """Render a compact version of the explainer with limited questions.
 
     This is useful for embedding in dashboard cards or sidebars.
