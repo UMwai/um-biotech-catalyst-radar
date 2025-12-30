@@ -1,7 +1,7 @@
 """Tests for Stripe payment integration."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import stripe
 
@@ -39,9 +39,7 @@ class TestStripeIntegration:
         assert stripe.api_key == mock_config.stripe_api_key
 
     @patch("stripe.checkout.Session.create")
-    def test_create_checkout_session_monthly(
-        self, mock_create, stripe_integration, mock_config
-    ):
+    def test_create_checkout_session_monthly(self, mock_create, stripe_integration, mock_config):
         """Test creating a monthly checkout session."""
         # Mock Stripe response
         mock_session = Mock()
@@ -77,9 +75,7 @@ class TestStripeIntegration:
         assert checkout_url == mock_session.url
 
     @patch("stripe.checkout.Session.create")
-    def test_create_checkout_session_annual(
-        self, mock_create, stripe_integration, mock_config
-    ):
+    def test_create_checkout_session_annual(self, mock_create, stripe_integration, mock_config):
         """Test creating an annual checkout session."""
         # Mock Stripe response
         mock_session = Mock()
@@ -126,14 +122,10 @@ class TestStripeIntegration:
         integration = StripeIntegration(config=config)
 
         with pytest.raises(ValueError, match="Stripe price ID not configured"):
-            integration.create_checkout_session(
-                user_email="test@example.com", plan="monthly"
-            )
+            integration.create_checkout_session(user_email="test@example.com", plan="monthly")
 
     @patch("stripe.checkout.Session.create")
-    def test_create_checkout_session_stripe_error(
-        self, mock_create, stripe_integration
-    ):
+    def test_create_checkout_session_stripe_error(self, mock_create, stripe_integration):
         """Test handling of Stripe API errors."""
         # Mock Stripe error
         mock_create.side_effect = stripe.error.StripeError("API Error")
@@ -144,9 +136,7 @@ class TestStripeIntegration:
             )
 
     @patch("stripe.billing_portal.Session.create")
-    def test_create_portal_session(
-        self, mock_create, stripe_integration, mock_config
-    ):
+    def test_create_portal_session(self, mock_create, stripe_integration, mock_config):
         """Test creating a customer portal session."""
         # Mock Stripe response
         mock_session = Mock()
@@ -156,9 +146,7 @@ class TestStripeIntegration:
 
         # Create portal session
         customer_id = "cus_test_customer_123"
-        portal_url = stripe_integration.create_portal_session(
-            customer_id=customer_id
-        )
+        portal_url = stripe_integration.create_portal_session(customer_id=customer_id)
 
         # Verify Stripe API was called correctly
         mock_create.assert_called_once_with(
@@ -175,9 +163,7 @@ class TestStripeIntegration:
             stripe_integration.create_portal_session(customer_id="")
 
     @patch("stripe.billing_portal.Session.create")
-    def test_create_portal_session_stripe_error(
-        self, mock_create, stripe_integration
-    ):
+    def test_create_portal_session_stripe_error(self, mock_create, stripe_integration):
         """Test handling of Stripe API errors in portal session."""
         mock_create.side_effect = stripe.error.InvalidRequestError(
             "Customer not found", param="customer"
@@ -233,15 +219,11 @@ class TestStripeIntegration:
         }
 
     @patch("stripe.Customer.list")
-    def test_get_subscription_status_no_customer(
-        self, mock_customer_list, stripe_integration
-    ):
+    def test_get_subscription_status_no_customer(self, mock_customer_list, stripe_integration):
         """Test getting subscription status when customer doesn't exist."""
         mock_customer_list.return_value = Mock(data=[])
 
-        status = stripe_integration.get_subscription_status(
-            user_email="nonexistent@example.com"
-        )
+        status = stripe_integration.get_subscription_status(user_email="nonexistent@example.com")
 
         assert status is None
 
@@ -257,9 +239,7 @@ class TestStripeIntegration:
         mock_customer_list.return_value = Mock(data=[mock_customer])
         mock_subscription_list.return_value = Mock(data=[])
 
-        status = stripe_integration.get_subscription_status(
-            user_email="nosub@example.com"
-        )
+        status = stripe_integration.get_subscription_status(user_email="nosub@example.com")
 
         assert status is None
 
@@ -274,19 +254,13 @@ class TestStripeIntegration:
         self, mock_customer_list, mock_subscription_list, stripe_integration
     ):
         """Test handling of Stripe API errors in subscription status."""
-        mock_customer_list.side_effect = stripe.error.APIConnectionError(
-            "Network error"
-        )
+        mock_customer_list.side_effect = stripe.error.APIConnectionError("Network error")
 
         with pytest.raises(stripe.error.APIConnectionError):
-            stripe_integration.get_subscription_status(
-                user_email="error@example.com"
-            )
+            stripe_integration.get_subscription_status(user_email="error@example.com")
 
     @patch("stripe.Webhook.construct_event")
-    def test_verify_webhook_signature(
-        self, mock_construct_event, stripe_integration, mock_config
-    ):
+    def test_verify_webhook_signature(self, mock_construct_event, stripe_integration, mock_config):
         """Test webhook signature verification."""
         # Mock webhook event
         mock_event = Mock()
@@ -296,9 +270,7 @@ class TestStripeIntegration:
         payload = b'{"type": "customer.subscription.created"}'
         sig_header = "t=1234567890,v1=fake_signature"
 
-        event = stripe_integration.verify_webhook_signature(
-            payload=payload, sig_header=sig_header
-        )
+        event = stripe_integration.verify_webhook_signature(payload=payload, sig_header=sig_header)
 
         # Verify Stripe API was called
         mock_construct_event.assert_called_once_with(
@@ -310,23 +282,17 @@ class TestStripeIntegration:
         assert event.type == "customer.subscription.created"
 
     @patch("stripe.Webhook.construct_event")
-    def test_verify_webhook_signature_invalid(
-        self, mock_construct_event, stripe_integration
-    ):
+    def test_verify_webhook_signature_invalid(self, mock_construct_event, stripe_integration):
         """Test webhook signature verification with invalid signature."""
-        mock_construct_event.side_effect = (
-            stripe.error.SignatureVerificationError(
-                "Invalid signature", sig_header="invalid"
-            )
+        mock_construct_event.side_effect = stripe.error.SignatureVerificationError(
+            "Invalid signature", sig_header="invalid"
         )
 
         payload = b'{"type": "test"}'
         sig_header = "invalid_signature"
 
         with pytest.raises(stripe.error.SignatureVerificationError):
-            stripe_integration.verify_webhook_signature(
-                payload=payload, sig_header=sig_header
-            )
+            stripe_integration.verify_webhook_signature(payload=payload, sig_header=sig_header)
 
     def test_verify_webhook_signature_no_secret(self, mock_config):
         """Test webhook verification when secret is not configured."""
@@ -345,9 +311,7 @@ class TestStripeIntegration:
         payload = b'{"type": "test"}'
         sig_header = "signature"
 
-        event = integration.verify_webhook_signature(
-            payload=payload, sig_header=sig_header
-        )
+        event = integration.verify_webhook_signature(payload=payload, sig_header=sig_header)
 
         assert event is None
 
@@ -358,9 +322,7 @@ class TestStripeIntegrationEdgeCases:
     @patch("stripe.checkout.Session.create")
     def test_network_timeout(self, mock_create, stripe_integration):
         """Test handling of network timeout errors."""
-        mock_create.side_effect = stripe.error.APIConnectionError(
-            "Connection timeout"
-        )
+        mock_create.side_effect = stripe.error.APIConnectionError("Connection timeout")
 
         with pytest.raises(stripe.error.APIConnectionError):
             stripe_integration.create_checkout_session(

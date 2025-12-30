@@ -104,16 +104,13 @@ def main():
         if st.session_state.get("user_email"):
             st.session_state.is_subscribed = True
             logger.info(
-                f"User {st.session_state.user_email} completed subscription "
-                f"(session: {session_id})"
+                f"User {st.session_state.user_email} completed subscription (session: {session_id})"
             )
 
         # Show session ID in expander (for debugging/support)
         with st.expander("🔍 Payment Details (for support)"):
             st.code(f"Session ID: {session_id}")
-            st.caption(
-                "If you need support, please provide this Session ID to our team."
-            )
+            st.caption("If you need support, please provide this Session ID to our team.")
 
     # Subscription management info
     st.markdown("---")

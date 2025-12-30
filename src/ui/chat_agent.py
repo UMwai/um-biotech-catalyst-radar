@@ -50,7 +50,7 @@ def render_chat_agent():
     # Chat input
     user_input = st.chat_input(
         "Ask me about biotech catalysts... (e.g., 'Phase 3 oncology under $2B')",
-        key="chat_input"
+        key="chat_input",
     )
 
     if user_input:
@@ -62,7 +62,7 @@ def _render_example_queries():
     st.markdown("### 💬 Ask me about biotech catalysts")
     st.markdown(
         "Try these example queries or type your own below:",
-        help="Click any example to get started"
+        help="Click any example to get started",
     )
 
     # Example queries in a grid
@@ -80,11 +80,7 @@ def _render_example_queries():
     for i, example in enumerate(examples):
         col = [col1, col2, col3][i % 3]
         with col:
-            if st.button(
-                f"💡 {example}",
-                key=f"example_{i}",
-                use_container_width=True
-            ):
+            if st.button(f"💡 {example}", key=f"example_{i}", use_container_width=True):
                 _handle_user_message(example)
                 st.rerun()
 
@@ -96,22 +92,18 @@ def _handle_user_message(user_message: str):
         user_message: User's query text
     """
     # Add user message to history
-    st.session_state.chat_history.append({
-        "role": "user",
-        "content": user_message,
-        "timestamp": datetime.now()
-    })
+    st.session_state.chat_history.append(
+        {"role": "user", "content": user_message, "timestamp": datetime.now()}
+    )
 
     # Get agent response
     agent = st.session_state.catalyst_agent
     response = agent.process_query(user_message)
 
     # Add agent response to history
-    st.session_state.chat_history.append({
-        "role": "assistant",
-        "content": response,
-        "timestamp": datetime.now()
-    })
+    st.session_state.chat_history.append(
+        {"role": "assistant", "content": response, "timestamp": datetime.now()}
+    )
 
     # Force rerun to display new messages
     st.rerun()
@@ -158,11 +150,7 @@ def _render_catalyst_list(response: Dict[str, Any]):
         _render_catalyst_card(catalyst, actions, index=i)
 
 
-def _render_catalyst_card(
-    catalyst: Dict[str, Any],
-    actions: List[Dict[str, str]],
-    index: int
-):
+def _render_catalyst_card(catalyst: Dict[str, Any], actions: List[Dict[str, str]], index: int):
     """Render a single catalyst as a card with action buttons.
 
     Args:
@@ -185,7 +173,9 @@ def _render_catalyst_card(
             date_str = completion_date
         else:
             date_str = completion_date.strftime("%Y-%m-%d")
-        days_until = (completion_date - datetime.now()).days if hasattr(completion_date, 'year') else None
+        days_until = (
+            (completion_date - datetime.now()).days if hasattr(completion_date, "year") else None
+        )
     else:
         date_str = "TBD"
         days_until = None
@@ -207,17 +197,17 @@ def _render_catalyst_card(
                 <span class="catalyst-ticker">{ticker}</span>
                 <span class="catalyst-phase">{phase}</span>
             </div>
-            <div class="catalyst-indication">{indication[:100]}{'...' if len(indication) > 100 else ''}</div>
+            <div class="catalyst-indication">{indication[:100]}{"..." if len(indication) > 100 else ""}</div>
             <div class="catalyst-sponsor">Sponsor: {sponsor}</div>
             <div class="catalyst-metrics">
                 <span>📅 {date_str}</span>
-                {f'<span class="days-until">({days_until} days)</span>' if days_until is not None else ''}
+                {f'<span class="days-until">({days_until} days)</span>' if days_until is not None else ""}
                 <span>💰 {price_str}</span>
                 <span>📊 {market_cap_str}</span>
             </div>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     # Action buttons
@@ -229,7 +219,7 @@ def _render_catalyst_card(
                 if st.button(
                     f"{action['icon']} {action['label']}",
                     key=button_key,
-                    use_container_width=True
+                    use_container_width=True,
                 ):
                     _handle_action(action["action"], catalyst)
 
@@ -358,7 +348,7 @@ def _apply_custom_css():
         }
         </style>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 

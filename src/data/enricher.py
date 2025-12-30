@@ -97,9 +97,7 @@ class StockEnricher:
         mask = (df["market_cap"].isna()) | (df["market_cap"] <= self.max_market_cap)
         return df[mask]
 
-    def get_price_history(
-        self, ticker: str, period: str = "6mo"
-    ) -> Optional[pd.DataFrame]:
+    def get_price_history(self, ticker: str, period: str = "6mo") -> Optional[pd.DataFrame]:
         """Get price history for charting.
 
         Args:

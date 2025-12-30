@@ -29,7 +29,7 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 import psycopg2
 from psycopg2 import pool, sql
-from psycopg2.extras import RealDictCursor, execute_values
+from psycopg2.extras import RealDictCursor
 import time
 
 # Configure logging
@@ -107,7 +107,7 @@ def init_connection_pool(minconn: int = 1, maxconn: int = 10) -> pool.ThreadedCo
             minconn,
             maxconn,
             database_url,
-            cursor_factory=RealDictCursor  # Return rows as dictionaries
+            cursor_factory=RealDictCursor,  # Return rows as dictionaries
         )
 
         logger.info("Connection pool initialized successfully")
@@ -193,9 +193,11 @@ def get_db_connection(retry_count: int = 3, retry_delay: int = 1):
 # DATA CLASSES
 # ============================================================================
 
+
 @dataclass
 class User:
     """User account data structure."""
+
     id: str
     email: str
     created_at: datetime
@@ -210,6 +212,7 @@ class User:
 @dataclass
 class Subscription:
     """Subscription data structure."""
+
     id: str
     user_id: str
     stripe_subscription_id: str
@@ -222,6 +225,7 @@ class Subscription:
 @dataclass
 class Catalyst:
     """Catalyst data structure."""
+
     id: str
     nct_id: str
     sponsor: str
@@ -238,6 +242,7 @@ class Catalyst:
 # USER FUNCTIONS
 # ============================================================================
 
+
 def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     """
     Get user by email address.
@@ -250,10 +255,7 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT * FROM users WHERE email = %s AND is_active = TRUE",
-                (email,)
-            )
+            cur.execute("SELECT * FROM users WHERE email = %s AND is_active = TRUE", (email,))
             return cur.fetchone()
 
 
@@ -269,18 +271,12 @@ def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT * FROM users WHERE id = %s AND is_active = TRUE",
-                (user_id,)
-            )
+            cur.execute("SELECT * FROM users WHERE id = %s AND is_active = TRUE", (user_id,))
             return cur.fetchone()
 
 
 def create_user(
-    email: str,
-    password_hash: str,
-    trial_days: int = 7,
-    signup_source: str = "organic"
+    email: str, password_hash: str, trial_days: int = 7, signup_source: str = "organic"
 ) -> Dict[str, Any]:
     """
     Create a new user with automatic trial setup.
@@ -308,13 +304,13 @@ def create_user(
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING *
                 """,
-                (email, password_hash, trial_start, trial_end, signup_source)
+                (email, password_hash, trial_start, trial_end, signup_source),
             )
             user = cur.fetchone()
 
             # Log signup event
-            log_analytics_event(user['id'], 'signup', 'conversion', {'source': signup_source})
-            log_analytics_event(user['id'], 'trial_start', 'conversion', {'trial_days': trial_days})
+            log_analytics_event(user["id"], "signup", "conversion", {"source": signup_source})
+            log_analytics_event(user["id"], "trial_start", "conversion", {"trial_days": trial_days})
 
             logger.info(f"Created user: {email} (trial until {trial_end})")
             return user
@@ -349,9 +345,7 @@ def update_user(user_id: str, **kwargs) -> Dict[str, Any]:
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             query = sql.SQL("UPDATE users SET {} WHERE id = %s RETURNING *").format(
-                sql.SQL(", ").join(
-                    sql.SQL("{} = %s").format(field) for field in fields
-                )
+                sql.SQL(", ").join(sql.SQL("{} = %s").format(field) for field in fields)
             )
             cur.execute(query, values)
             return cur.fetchone()
@@ -368,15 +362,16 @@ def is_trial_active(user_id: str) -> bool:
         True if trial is active, False otherwise
     """
     user = get_user_by_id(user_id)
-    if not user or not user['trial_end_date']:
+    if not user or not user["trial_end_date"]:
         return False
 
-    return datetime.now() < user['trial_end_date']
+    return datetime.now() < user["trial_end_date"]
 
 
 # ============================================================================
 # SUBSCRIPTION FUNCTIONS
 # ============================================================================
+
 
 def get_user_subscription(user_id: str) -> Optional[Dict[str, Any]]:
     """
@@ -397,7 +392,7 @@ def get_user_subscription(user_id: str) -> Optional[Dict[str, Any]]:
                 ORDER BY created_at DESC
                 LIMIT 1
                 """,
-                (user_id,)
+                (user_id,),
             )
             return cur.fetchone()
 
@@ -413,7 +408,7 @@ def has_active_subscription(user_id: str) -> bool:
         True if user has active subscription, False otherwise
     """
     subscription = get_user_subscription(user_id)
-    return subscription is not None and subscription['status'] == 'active'
+    return subscription is not None and subscription["status"] == "active"
 
 
 def create_subscription(
@@ -423,7 +418,7 @@ def create_subscription(
     status: str,
     plan_id: str,
     plan_amount: int,
-    current_period_end: datetime
+    current_period_end: datetime,
 ) -> Dict[str, Any]:
     """
     Create a new subscription (called from Stripe webhook).
@@ -451,16 +446,25 @@ def create_subscription(
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING *
                 """,
-                (user_id, stripe_subscription_id, stripe_product_id,
-                 status, plan_id, plan_amount, current_period_end)
+                (
+                    user_id,
+                    stripe_subscription_id,
+                    stripe_product_id,
+                    status,
+                    plan_id,
+                    plan_amount,
+                    current_period_end,
+                ),
             )
             subscription = cur.fetchone()
 
             # Log conversion event
-            log_analytics_event(user_id, 'subscribe', 'conversion', {
-                'plan': plan_id,
-                'amount': plan_amount
-            })
+            log_analytics_event(
+                user_id,
+                "subscribe",
+                "conversion",
+                {"plan": plan_id, "amount": plan_amount},
+            )
 
             logger.info(f"Created subscription for user {user_id}: {plan_id}")
             return subscription
@@ -469,7 +473,7 @@ def create_subscription(
 def update_subscription_status(
     stripe_subscription_id: str,
     status: str,
-    current_period_end: Optional[datetime] = None
+    current_period_end: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     """
     Update subscription status (called from Stripe webhook).
@@ -492,7 +496,7 @@ def update_subscription_status(
                     WHERE stripe_subscription_id = %s
                     RETURNING *
                     """,
-                    (status, current_period_end, stripe_subscription_id)
+                    (status, current_period_end, stripe_subscription_id),
                 )
             else:
                 cur.execute(
@@ -502,15 +506,18 @@ def update_subscription_status(
                     WHERE stripe_subscription_id = %s
                     RETURNING *
                     """,
-                    (status, stripe_subscription_id)
+                    (status, stripe_subscription_id),
                 )
 
             subscription = cur.fetchone()
 
-            if subscription and status == 'canceled':
-                log_analytics_event(subscription['user_id'], 'churn', 'retention', {
-                    'plan': subscription['plan_id']
-                })
+            if subscription and status == "canceled":
+                log_analytics_event(
+                    subscription["user_id"],
+                    "churn",
+                    "retention",
+                    {"plan": subscription["plan_id"]},
+                )
 
             return subscription
 
@@ -519,11 +526,12 @@ def update_subscription_status(
 # CATALYST FUNCTIONS
 # ============================================================================
 
+
 def get_catalysts(
     phase: Optional[str] = None,
     max_market_cap: Optional[int] = None,
     min_ticker_confidence: int = 80,
-    limit: int = 100
+    limit: int = 100,
 ) -> List[Dict[str, Any]]:
     """
     Get catalysts with optional filters.
@@ -578,7 +586,7 @@ def upsert_catalyst(catalyst_data: Dict[str, Any]) -> Dict[str, Any]:
     Optional fields:
         - sponsor, phase, indication, completion_date, ticker, market_cap, etc.
     """
-    required_field = 'nct_id'
+    required_field = "nct_id"
     if required_field not in catalyst_data:
         raise ValueError(f"Missing required field: {required_field}")
 
@@ -589,7 +597,7 @@ def upsert_catalyst(catalyst_data: Dict[str, Any]) -> Dict[str, Any]:
             values = [catalyst_data[col] for col in columns]
 
             # Generate conflict resolution (update all fields except id and created_at)
-            update_columns = [col for col in columns if col not in ['id', 'nct_id']]
+            update_columns = [col for col in columns if col not in ["id", "nct_id"]]
 
             query = sql.SQL("""
                 INSERT INTO catalysts ({columns})
@@ -603,7 +611,7 @@ def upsert_catalyst(catalyst_data: Dict[str, Any]) -> Dict[str, Any]:
                 updates=sql.SQL(", ").join(
                     sql.SQL("{} = EXCLUDED.{}").format(sql.Identifier(col), sql.Identifier(col))
                     for col in update_columns
-                )
+                ),
             )
 
             cur.execute(query, values)
@@ -614,11 +622,12 @@ def upsert_catalyst(catalyst_data: Dict[str, Any]) -> Dict[str, Any]:
 # ANALYTICS FUNCTIONS
 # ============================================================================
 
+
 def log_analytics_event(
     user_id: Optional[str],
     event_type: str,
     event_category: str,
-    event_metadata: Optional[Dict[str, Any]] = None
+    event_metadata: Optional[Dict[str, Any]] = None,
 ):
     """
     Log an analytics event.
@@ -638,7 +647,12 @@ def log_analytics_event(
                 INSERT INTO analytics_events (user_id, event_type, event_category, event_metadata)
                 VALUES (%s, %s, %s, %s)
                 """,
-                (user_id, event_type, event_category, json.dumps(event_metadata) if event_metadata else None)
+                (
+                    user_id,
+                    event_type,
+                    event_category,
+                    json.dumps(event_metadata) if event_metadata else None,
+                ),
             )
 
     logger.debug(f"Logged event: {event_type} for user {user_id}")
@@ -649,7 +663,7 @@ def log_email_sent(
     email_type: str,
     email_campaign: str,
     subject: str,
-    sendgrid_message_id: Optional[str] = None
+    sendgrid_message_id: Optional[str] = None,
 ):
     """
     Log an email sent to a user.
@@ -668,7 +682,7 @@ def log_email_sent(
                 INSERT INTO email_log (user_id, email_type, email_campaign, subject, sendgrid_message_id)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
-                (user_id, email_type, email_campaign, subject, sendgrid_message_id)
+                (user_id, email_type, email_campaign, subject, sendgrid_message_id),
             )
 
     logger.info(f"Logged email sent: {email_type} to user {user_id}")
@@ -678,7 +692,10 @@ def log_email_sent(
 # WORKFLOW LOGGING
 # ============================================================================
 
-def log_workflow_start(workflow_id: str, workflow_name: str, execution_id: Optional[str] = None) -> str:
+
+def log_workflow_start(
+    workflow_id: str, workflow_name: str, execution_id: Optional[str] = None
+) -> str:
     """
     Log the start of a workflow run.
 
@@ -698,9 +715,9 @@ def log_workflow_start(workflow_id: str, workflow_name: str, execution_id: Optio
                 VALUES (%s, %s, %s, 'running')
                 RETURNING id
                 """,
-                (workflow_id, workflow_name, execution_id)
+                (workflow_id, workflow_name, execution_id),
             )
-            run_id = cur.fetchone()['id']
+            run_id = cur.fetchone()["id"]
             logger.info(f"Started workflow: {workflow_name} (run_id={run_id})")
             return run_id
 
@@ -710,7 +727,7 @@ def log_workflow_complete(
     status: str,
     records_processed: int = 0,
     records_failed: int = 0,
-    error_message: Optional[str] = None
+    error_message: Optional[str] = None,
 ):
     """
     Log the completion of a workflow run.
@@ -735,15 +752,18 @@ def log_workflow_complete(
                     error_message = %s
                 WHERE id = %s
                 """,
-                (status, records_processed, records_failed, error_message, run_id)
+                (status, records_processed, records_failed, error_message, run_id),
             )
 
-    logger.info(f"Completed workflow run {run_id}: {status} ({records_processed} processed, {records_failed} failed)")
+    logger.info(
+        f"Completed workflow run {run_id}: {status} ({records_processed} processed, {records_failed} failed)"
+    )
 
 
 # ============================================================================
 # HEALTH CHECK
 # ============================================================================
+
 
 def check_database_health() -> Dict[str, Any]:
     """
@@ -757,21 +777,21 @@ def check_database_health() -> Dict[str, Any]:
             with conn.cursor() as cur:
                 # Check connection
                 cur.execute("SELECT version()")
-                version = cur.fetchone()['version']
+                version = cur.fetchone()["version"]
 
                 # Get table counts
                 cur.execute("SELECT COUNT(*) FROM users")
-                user_count = cur.fetchone()['count']
+                user_count = cur.fetchone()["count"]
 
                 cur.execute("SELECT COUNT(*) FROM catalysts")
-                catalyst_count = cur.fetchone()['count']
+                catalyst_count = cur.fetchone()["count"]
 
                 return {
                     "status": "healthy",
                     "database_version": version,
                     "user_count": user_count,
                     "catalyst_count": catalyst_count,
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
 
     except Exception as e:
@@ -779,7 +799,7 @@ def check_database_health() -> Dict[str, Any]:
         return {
             "status": "unhealthy",
             "error": str(e),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
 

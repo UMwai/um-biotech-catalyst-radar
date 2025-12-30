@@ -1,4 +1,5 @@
 """Notification service for sending alerts."""
+
 import logging
 import smtplib
 from email.mime.text import MIMEText
@@ -10,6 +11,7 @@ import requests
 from .config import Config
 
 logger = logging.getLogger(__name__)
+
 
 class NotificationService:
     """Service to handle sending notifications."""
@@ -26,10 +28,14 @@ class NotificationService:
             logger.info(f"[MOCK EMAIL] To: {to_email} | Subject: {subject} | Body: {body}")
             return True
 
-        if self.config.notification_provider == "email" or (self.config.email_smtp_server and self.config.email_sender_user):
+        if self.config.notification_provider == "email" or (
+            self.config.email_smtp_server and self.config.email_sender_user
+        ):
             return self._send_smtp_email(to_email, subject, body)
 
-        logger.warning(f"Email requested but provider configuration is missing or provider is {self.config.notification_provider}")
+        logger.warning(
+            f"Email requested but provider configuration is missing or provider is {self.config.notification_provider}"
+        )
         return False
 
     def send_sms(self, to_number: str, message: str) -> bool:
@@ -39,20 +45,24 @@ class NotificationService:
             logger.info(f"[MOCK SMS] To: {to_number} | Message: {message}")
             return True
 
-        if self.config.notification_provider == "twilio" or (self.config.twilio_account_sid and self.config.twilio_auth_token):
+        if self.config.notification_provider == "twilio" or (
+            self.config.twilio_account_sid and self.config.twilio_auth_token
+        ):
             return self._send_twilio_sms(to_number, message)
 
-        logger.warning(f"SMS requested but provider configuration is missing or provider is {self.config.notification_provider}")
+        logger.warning(
+            f"SMS requested but provider configuration is missing or provider is {self.config.notification_provider}"
+        )
         return False
 
     def _send_smtp_email(self, to_email: str, subject: str, body: str) -> bool:
         try:
             msg = MIMEMultipart()
             sender = self.config.email_from_address or self.config.email_sender_user
-            msg['From'] = sender
-            msg['To'] = to_email
-            msg['Subject'] = subject
-            msg.attach(MIMEText(body, 'plain'))
+            msg["From"] = sender
+            msg["To"] = to_email
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain"))
 
             server = smtplib.SMTP(self.config.email_smtp_server, self.config.email_smtp_port)
             server.starttls()
@@ -68,15 +78,9 @@ class NotificationService:
     def _send_twilio_sms(self, to_number: str, message: str) -> bool:
         try:
             url = f"https://api.twilio.com/2010-04-01/Accounts/{self.config.twilio_account_sid}/Messages.json"
-            data = {
-                "To": to_number,
-                "From": self.config.twilio_from_number,
-                "Body": message
-            }
+            data = {"To": to_number, "From": self.config.twilio_from_number, "Body": message}
             response = requests.post(
-                url,
-                data=data,
-                auth=(self.config.twilio_account_sid, self.config.twilio_auth_token)
+                url, data=data, auth=(self.config.twilio_account_sid, self.config.twilio_auth_token)
             )
             response.raise_for_status()
             return True
@@ -84,7 +88,9 @@ class NotificationService:
             logger.error(f"Failed to send SMS: {e}")
             return False
 
+
 _service_instance = None
+
 
 def get_notification_service(config: Optional[Config] = None) -> NotificationService:
     """Get the singleton instance of the notification service."""

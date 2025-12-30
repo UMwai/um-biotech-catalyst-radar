@@ -273,9 +273,7 @@ def main():
     )
 
     # Log the cancellation (for analytics)
-    logger.info(
-        f"User canceled checkout (email: {st.session_state.get('user_email', 'unknown')})"
-    )
+    logger.info(f"User canceled checkout (email: {st.session_state.get('user_email', 'unknown')})")
 
 
 if __name__ == "__main__":

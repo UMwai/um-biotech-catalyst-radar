@@ -8,11 +8,16 @@ in expandable cards.
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+import logging
+from datetime import datetime
 
 import streamlit as st
 
 from ..agents.explainer_agent import ExplainerAgent
+from ..utils.db import log_analytics_event, get_user_by_email
 from ..utils.notifications import get_notification_service
+
+logger = logging.getLogger(__name__)
 
 
 def render_explainer(catalyst: Dict[str, Any], user_tier: str = "starter") -> None:
@@ -132,9 +137,7 @@ def _render_explanation_card(
     _render_related_questions(question_type, questions)
 
 
-def _render_citation(
-    therapeutic_area: str, phase: str, question_type: str
-) -> None:
+def _render_citation(therapeutic_area: str, phase: str, question_type: str) -> None:
     """Render data source citation.
 
     Args:
@@ -204,9 +207,7 @@ def _render_feedback_buttons(question_type: str) -> None:
             _record_feedback(question_type, "negative")
 
 
-def _render_related_questions(
-    current_question: str, all_questions: list
-) -> None:
+def _render_related_questions(current_question: str, all_questions: list) -> None:
     """Suggest related questions based on current question.
 
     Args:
@@ -312,9 +313,7 @@ def _set_alert(catalyst: Dict[str, Any]) -> None:
 
             # Attempt to send email
             success = notification_service.send_email(
-                to_email=user_email,
-                subject=f"Alert Set: {ticker}",
-                body=message
+                to_email=user_email, subject=f"Alert Set: {ticker}", body=message
             )
 
             if success:
@@ -359,18 +358,47 @@ def _record_feedback(question_type: str, sentiment: str) -> None:
     if "feedback" not in st.session_state:
         st.session_state.feedback = []
 
-    st.session_state.feedback.append({
-        "question_type": question_type,
-        "sentiment": sentiment,
-        "timestamp": st.session_state.get("user_email", "anonymous"),
-    })
+    user_email = st.session_state.get("user_email", "anonymous")
 
-    # TODO: In production, send to analytics backend (Supabase, PostHog, etc.)
+    # Store in session state for immediate UI feedback
+    st.session_state.feedback.append(
+        {
+            "question_type": question_type,
+            "sentiment": sentiment,
+            "timestamp": datetime.now(),
+            "user": user_email,
+        }
+    )
+
+    # Send to analytics backend
+    try:
+        user_id = None
+        if user_email and user_email != "anonymous":
+            user = get_user_by_email(user_email)
+            if user:
+                user_id = user.get("id")
+
+        # Log to internal database
+        log_analytics_event(
+            user_id=user_id,
+            event_type="explanation_feedback",
+            event_category="engagement",
+            event_metadata={
+                "question_type": question_type,
+                "sentiment": sentiment,
+                "user_email_masked": user_email if user_email == "anonymous" else "****",
+            },
+        )
+
+        # TODO: Add Supabase/PostHog integration here
+        # Example: posthog.capture(user_id or "anonymous", "explanation_feedback", properties={...})
+
+    except Exception as e:
+        # Don't fail the UI if analytics logging fails
+        logger.error(f"Failed to log feedback analytics: {e}")
 
 
-def render_explainer_compact(
-    catalyst: Dict[str, Any], max_questions: int = 3
-) -> None:
+def render_explainer_compact(catalyst: Dict[str, Any], max_questions: int = 3) -> None:
     """Render a compact version of the explainer with limited questions.
 
     This is useful for embedding in dashboard cards or sidebars.

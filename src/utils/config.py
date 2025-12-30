@@ -40,6 +40,9 @@ class Config:
     max_market_cap: float = 5_000_000_000  # $5B
     cache_ttl_hours: int = 24
 
+    # n8n
+    n8n_webhook_base_url: Optional[str] = None
+
     @classmethod
     def from_env(cls, env_file: Optional[Union[str, Path]] = None) -> "Config":
         """Load configuration from environment variables.
@@ -64,6 +67,7 @@ class Config:
             app_env=os.getenv("APP_ENV", "development"),
             app_url=os.getenv("APP_URL", "http://localhost:8501"),
             debug=os.getenv("DEBUG", "false").lower() == "true",
+            n8n_webhook_base_url=os.getenv("N8N_WEBHOOK_BASE_URL"),
             notification_provider=os.getenv("NOTIFICATION_PROVIDER", "console"),
             email_smtp_server=os.getenv("EMAIL_SMTP_SERVER", ""),
             email_smtp_port=int(os.getenv("EMAIL_SMTP_PORT", "587")),
@@ -83,8 +87,4 @@ class Config:
     @property
     def is_configured(self) -> bool:
         """Check if Stripe is configured."""
-        return bool(
-            self.stripe_api_key
-            and self.stripe_price_monthly
-            and self.stripe_price_annual
-        )
+        return bool(self.stripe_api_key and self.stripe_price_monthly and self.stripe_price_annual)

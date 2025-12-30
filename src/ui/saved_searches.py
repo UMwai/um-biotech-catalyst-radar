@@ -10,8 +10,7 @@ This module provides:
 
 import streamlit as st
 from datetime import datetime
-from typing import Optional, Dict, Any, List
-import json
+from typing import Dict, Any
 
 from supabase import create_client, Client
 import os
@@ -49,9 +48,13 @@ def render_saved_searches(user_id: str) -> None:
 
     # Fetch user's saved searches
     try:
-        response = supabase.table("saved_searches").select("*").eq(
-            "user_id", user_id
-        ).order("created_at", desc=True).execute()
+        response = (
+            supabase.table("saved_searches")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
 
         searches = response.data or []
     except Exception as e:
@@ -119,11 +122,7 @@ def _render_search_card(supabase: Client, search: Dict[str, Any], user_tier: str
 
             # Notification channels
             channels = search["notification_channels"]
-            channel_icons = {
-                "email": "📧",
-                "sms": "📱",
-                "slack": "💬"
-            }
+            channel_icons = {"email": "📧", "sms": "📱", "slack": "💬"}
             channel_str = " ".join([channel_icons.get(ch, ch) for ch in channels])
             st.caption(f"Channels: {channel_str}")
 
@@ -159,7 +158,12 @@ def _render_search_card(supabase: Client, search: Dict[str, Any], user_tier: str
                 st.rerun()
 
         with col4:
-            if st.button("Delete", key=f"delete_{search['id']}", type="secondary", use_container_width=True):
+            if st.button(
+                "Delete",
+                key=f"delete_{search['id']}",
+                type="secondary",
+                use_container_width=True,
+            ):
                 _delete_search(supabase, search["id"])
                 st.rerun()
 
@@ -167,12 +171,13 @@ def _render_search_card(supabase: Client, search: Dict[str, Any], user_tier: str
 def _get_match_count(supabase: Client, search_id: str) -> int:
     """Get number of matches in last 7 days for a search."""
     try:
-        response = supabase.table("alert_notifications").select(
-            "id", count="exact"
-        ).eq("saved_search_id", search_id).gte(
-            "notification_sent_at",
-            (datetime.now() - timedelta(days=7)).isoformat()
-        ).execute()
+        response = (
+            supabase.table("alert_notifications")
+            .select("id", count="exact")
+            .eq("saved_search_id", search_id)
+            .gte("notification_sent_at", (datetime.now() - timedelta(days=7)).isoformat())
+            .execute()
+        )
 
         return response.count or 0
     except:
@@ -210,12 +215,12 @@ def _test_search(supabase: Client, search: Dict[str, Any]) -> None:
                         "Ticker": r["ticker"],
                         "Phase": r["phase"],
                         "Indication": r["indication"][:50] + "...",
-                        "Date": r["completion_date"]
+                        "Date": r["completion_date"],
                     }
                     for r in results
                 ],
                 use_container_width=True,
-                hide_index=True
+                hide_index=True,
             )
 
     except Exception as e:
@@ -248,7 +253,7 @@ def _render_create_modal(supabase: Client, user_id: str, user_tier: str) -> None
         name = st.text_input(
             "Search Name*",
             placeholder="e.g., Oncology under $500M",
-            help="Give this search a memorable name"
+            help="Give this search a memorable name",
         )
 
         st.markdown("#### Filter Criteria")
@@ -258,13 +263,13 @@ def _render_create_modal(supabase: Client, user_id: str, user_tier: str) -> None
             phase = st.selectbox(
                 "Phase",
                 ["", "Phase 2", "Phase 3", "Phase 2/Phase 3"],
-                help="Filter by trial phase"
+                help="Filter by trial phase",
             )
 
             therapeutic_area = st.text_input(
                 "Therapeutic Area",
                 placeholder="e.g., oncology, neurology",
-                help="Filter by indication (case-insensitive)"
+                help="Filter by indication (case-insensitive)",
             )
 
         with col2:
@@ -274,7 +279,7 @@ def _render_create_modal(supabase: Client, user_id: str, user_tier: str) -> None
                 max_value=10.0,
                 value=5.0,
                 step=0.5,
-                help="Maximum market capitalization in billions"
+                help="Maximum market capitalization in billions",
             )
 
             min_market_cap = st.number_input(
@@ -283,28 +288,34 @@ def _render_create_modal(supabase: Client, user_id: str, user_tier: str) -> None
                 max_value=10.0,
                 value=0.0,
                 step=0.5,
-                help="Minimum market capitalization in billions"
+                help="Minimum market capitalization in billions",
             )
 
         st.markdown("#### Notification Settings")
 
         # Email always enabled
-        email_enabled = True
-        st.checkbox("📧 Email", value=True, disabled=True, help="Email notifications (always enabled)")
+        st.checkbox(
+            "📧 Email",
+            value=True,
+            disabled=True,
+            help="Email notifications (always enabled)",
+        )
 
         # SMS and Slack for Pro tier only
         sms_enabled = st.checkbox(
             "📱 SMS",
             value=False,
             disabled=(user_tier != "pro"),
-            help="SMS notifications (Pro tier only)" if user_tier != "pro" else "SMS notifications"
+            help="SMS notifications (Pro tier only)" if user_tier != "pro" else "SMS notifications",
         )
 
         slack_enabled = st.checkbox(
             "💬 Slack",
             value=False,
             disabled=(user_tier != "pro"),
-            help="Slack notifications (Pro tier only)" if user_tier != "pro" else "Slack notifications"
+            help="Slack notifications (Pro tier only)"
+            if user_tier != "pro"
+            else "Slack notifications",
         )
 
         if user_tier != "pro" and (sms_enabled or slack_enabled):
@@ -312,7 +323,9 @@ def _render_create_modal(supabase: Client, user_id: str, user_tier: str) -> None
 
         col1, col2 = st.columns(2)
         with col1:
-            submit = st.form_submit_button("Create Search", type="primary", use_container_width=True)
+            submit = st.form_submit_button(
+                "Create Search", type="primary", use_container_width=True
+            )
         with col2:
             cancel = st.form_submit_button("Cancel", use_container_width=True)
 
@@ -340,13 +353,15 @@ def _render_create_modal(supabase: Client, user_id: str, user_tier: str) -> None
 
                 # Create search
                 try:
-                    supabase.table("saved_searches").insert({
-                        "user_id": user_id,
-                        "name": name,
-                        "query_params": query_params,
-                        "notification_channels": channels,
-                        "active": True
-                    }).execute()
+                    supabase.table("saved_searches").insert(
+                        {
+                            "user_id": user_id,
+                            "name": name,
+                            "query_params": query_params,
+                            "notification_channels": channels,
+                            "active": True,
+                        }
+                    ).execute()
 
                     st.success(f"Search '{name}' created successfully!")
                     st.session_state.show_create_modal = False
@@ -364,7 +379,9 @@ def _render_edit_modal(supabase: Client, search_id: str) -> None:
     """Render the edit search modal."""
     # Fetch current search data
     try:
-        response = supabase.table("saved_searches").select("*").eq("id", search_id).single().execute()
+        response = (
+            supabase.table("saved_searches").select("*").eq("id", search_id).single().execute()
+        )
         search = response.data
     except Exception as e:
         st.error(f"Error loading search: {e}")
@@ -384,12 +401,11 @@ def _render_edit_modal(supabase: Client, search_id: str) -> None:
             phase = st.selectbox(
                 "Phase",
                 ["", "Phase 2", "Phase 3", "Phase 2/Phase 3"],
-                index=["", "Phase 2", "Phase 3", "Phase 2/Phase 3"].index(params.get("phase", ""))
+                index=["", "Phase 2", "Phase 3", "Phase 2/Phase 3"].index(params.get("phase", "")),
             )
 
             therapeutic_area = st.text_input(
-                "Therapeutic Area",
-                value=params.get("therapeutic_area", "")
+                "Therapeutic Area", value=params.get("therapeutic_area", "")
             )
 
         with col2:
@@ -399,7 +415,7 @@ def _render_edit_modal(supabase: Client, search_id: str) -> None:
                 min_value=0.0,
                 max_value=10.0,
                 value=float(max_cap_b),
-                step=0.5
+                step=0.5,
             )
 
             min_cap_b = params.get("min_market_cap", 0) / 1_000_000_000
@@ -408,13 +424,12 @@ def _render_edit_modal(supabase: Client, search_id: str) -> None:
                 min_value=0.0,
                 max_value=10.0,
                 value=float(min_cap_b),
-                step=0.5
+                step=0.5,
             )
 
         st.markdown("#### Notification Settings")
 
         channels = search["notification_channels"]
-        email_enabled = True
         st.checkbox("📧 Email", value=True, disabled=True)
 
         sms_enabled = st.checkbox("📱 SMS", value="sms" in channels)
@@ -446,11 +461,13 @@ def _render_edit_modal(supabase: Client, search_id: str) -> None:
 
             # Update search
             try:
-                supabase.table("saved_searches").update({
-                    "name": name,
-                    "query_params": query_params,
-                    "notification_channels": channels
-                }).eq("id", search_id).execute()
+                supabase.table("saved_searches").update(
+                    {
+                        "name": name,
+                        "query_params": query_params,
+                        "notification_channels": channels,
+                    }
+                ).eq("id", search_id).execute()
 
                 st.success("Search updated successfully!")
                 st.session_state.show_edit_modal = False

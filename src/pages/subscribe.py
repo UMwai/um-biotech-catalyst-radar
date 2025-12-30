@@ -131,27 +131,20 @@ def main():
                 )
 
             # Redirect to Stripe Checkout
-            st.success(
-                f"Redirecting to Stripe Checkout for {plan} plan..."
-            )
+            st.success(f"Redirecting to Stripe Checkout for {plan} plan...")
             st.markdown(
                 f'<meta http-equiv="refresh" content="0; url={checkout_url}">',
                 unsafe_allow_html=True,
             )
             # Also provide a fallback link
-            st.markdown(
-                f"If you are not redirected automatically, "
-                f'[click here]({checkout_url}).'
-            )
+            st.markdown(f"If you are not redirected automatically, [click here]({checkout_url}).")
 
         except ValueError as e:
             st.error(f"Configuration error: {e}")
             logger.error(f"Configuration error during checkout: {e}")
 
         except Exception as e:
-            st.error(
-                f"Failed to create checkout session. Please try again or contact support."
-            )
+            st.error("Failed to create checkout session. Please try again or contact support.")
             logger.error(f"Error creating checkout session: {e}", exc_info=True)
 
     # FAQ Section
