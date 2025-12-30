@@ -297,12 +297,8 @@ def _render_similar_tab(catalyst: Dict[str, Any], user_tier: str) -> None:
             "- Get AI-powered similarity scoring"
         )
 
-        st.link_button(
-            "Upgrade to Pro - $49/month",
-            "https://buy.stripe.com/test_PLACEHOLDER",
-            type="primary",
-            use_container_width=True,
-        )
+        if st.button("Upgrade to Pro - $49/month", type="primary", use_container_width=True):
+            st.switch_page("pages/subscribe.py")
     else:
         # Pro feature: Show similar catalysts
         st.subheader("Similar Historical Catalysts")
