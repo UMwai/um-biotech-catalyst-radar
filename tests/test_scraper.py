@@ -55,13 +55,9 @@ class TestClinicalTrialsScraper:
                         "nctId": "NCT12345678",
                         "briefTitle": "Test Study",
                     },
-                    "sponsorCollaboratorsModule": {
-                        "leadSponsor": {"name": "Test Pharma Inc"}
-                    },
+                    "sponsorCollaboratorsModule": {"leadSponsor": {"name": "Test Pharma Inc"}},
                     "designModule": {"phases": ["PHASE3"]},
-                    "statusModule": {
-                        "primaryCompletionDateStruct": {"date": "2025-03-15"}
-                    },
+                    "statusModule": {"primaryCompletionDateStruct": {"date": "2025-03-15"}},
                     "conditionsModule": {"conditions": ["Cancer", "Tumor"]},
                 }
             }
