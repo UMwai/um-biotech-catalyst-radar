@@ -128,9 +128,10 @@ class TrialManager:
         # Refresh user data
         self.user = get_user(self.user_email)
 
-        # TODO: Trigger welcome email workflow when n8n is set up
-        # from .n8n import trigger_workflow
-        # trigger_workflow('new_trial_user', {'user_id': self.user['id']})
+        # Trigger welcome email workflow
+        from .n8n import trigger_workflow
+
+        trigger_workflow("new_trial_user", {"user_id": self.user["id"]})
 
     def mark_converted(self) -> None:
         """Mark trial as converted to paid.
