@@ -34,7 +34,7 @@ def render_dashboard(
         next_30 = len(df[df["days_until"] <= 30]) if "days_until" in df.columns else 0
         st.metric("Next 30 Days", next_30)
     with col3:
-        phase3_count = len(df[df["phase"] == "Phase 3"])
+        phase3_count = len(df[df["phase"] == "Phase 3"]) if "phase" in df.columns else 0
         st.metric("Phase 3 Trials", phase3_count)
 
     st.divider()
@@ -43,6 +43,7 @@ def render_dashboard(
     if "completion_date" in df.columns and not df.empty:
         today = pd.Timestamp.now().normalize()
         df = df.copy()
+        df["completion_date"] = pd.to_datetime(df["completion_date"], errors="coerce")
         df["days_until"] = (df["completion_date"] - today).dt.days
 
     # Prepare display columns
