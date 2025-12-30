@@ -7,11 +7,16 @@ in expandable cards.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+import logging
+from datetime import datetime
 
 import streamlit as st
 
 from ..agents.explainer_agent import ExplainerAgent
+from ..utils.db import log_analytics_event, get_user_by_email
+
+logger = logging.getLogger(__name__)
 
 
 def render_explainer(catalyst: Dict[str, Any], user_tier: str = "starter") -> None:
@@ -326,15 +331,44 @@ def _record_feedback(question_type: str, sentiment: str) -> None:
     if "feedback" not in st.session_state:
         st.session_state.feedback = []
 
+    user_email = st.session_state.get("user_email", "anonymous")
+
+    # Store in session state for immediate UI feedback
     st.session_state.feedback.append(
         {
             "question_type": question_type,
             "sentiment": sentiment,
-            "timestamp": st.session_state.get("user_email", "anonymous"),
+            "timestamp": datetime.now(),
+            "user": user_email,
         }
     )
 
-    # TODO: In production, send to analytics backend (Supabase, PostHog, etc.)
+    # Send to analytics backend
+    try:
+        user_id = None
+        if user_email and user_email != "anonymous":
+            user = get_user_by_email(user_email)
+            if user:
+                user_id = user.get("id")
+
+        # Log to internal database
+        log_analytics_event(
+            user_id=user_id,
+            event_type="explanation_feedback",
+            event_category="engagement",
+            event_metadata={
+                "question_type": question_type,
+                "sentiment": sentiment,
+                "user_email_masked": user_email if user_email == "anonymous" else "****",
+            },
+        )
+
+        # TODO: Add Supabase/PostHog integration here
+        # Example: posthog.capture(user_id or "anonymous", "explanation_feedback", properties={...})
+
+    except Exception as e:
+        # Don't fail the UI if analytics logging fails
+        logger.error(f"Failed to log feedback analytics: {e}")
 
 
 def render_explainer_compact(catalyst: Dict[str, Any], max_questions: int = 3) -> None:
