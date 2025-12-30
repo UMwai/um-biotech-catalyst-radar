@@ -21,6 +21,16 @@ def mock_config():
         app_env="test",
         app_url="http://localhost:8501",
         debug=True,
+        n8n_webhook_base_url=None,
+        notification_provider="console",
+        email_smtp_server="",
+        email_smtp_port=587,
+        email_sender_user="",
+        email_sender_password="",
+        email_from_address="",
+        twilio_account_sid="",
+        twilio_auth_token="",
+        twilio_from_number="",
     )
 
 
@@ -118,6 +128,16 @@ class TestStripeIntegration:
             app_env="test",
             app_url="http://localhost:8501",
             debug=True,
+            n8n_webhook_base_url=None,
+            notification_provider="console",
+            email_smtp_server="",
+            email_smtp_port=587,
+            email_sender_user="",
+            email_sender_password="",
+            email_from_address="",
+            twilio_account_sid="",
+            twilio_auth_token="",
+            twilio_from_number="",
         )
         integration = StripeIntegration(config=config)
 
@@ -305,6 +325,16 @@ class TestStripeIntegration:
             app_env="test",
             app_url="http://localhost:8501",
             debug=True,
+            n8n_webhook_base_url=None,
+            notification_provider="console",
+            email_smtp_server="",
+            email_smtp_port=587,
+            email_sender_user="",
+            email_sender_password="",
+            email_from_address="",
+            twilio_account_sid="",
+            twilio_auth_token="",
+            twilio_from_number="",
         )
         integration = StripeIntegration(config=config)
 
