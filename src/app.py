@@ -15,7 +15,7 @@ def main():
         page_title="Biotech Run-Up Radar",
         page_icon="🧬",
         layout="wide",
-        initial_sidebar_state="collapsed",
+        initial_sidebar_state="expanded",
     )
 
     # Load config
@@ -36,6 +36,27 @@ def main():
 
     # Sidebar for settings
     with st.sidebar:
+        st.header("Biotech Catalyst Radar")
+
+        # Navigation menu
+        st.markdown("### Navigation")
+        nav_col1, nav_col2 = st.columns(2)
+        with nav_col1:
+            if st.button("📊 Dashboard", use_container_width=True, type="secondary"):
+                st.switch_page("app.py")
+        with nav_col2:
+            if st.button("💬 Chat", use_container_width=True, type="secondary"):
+                st.switch_page("pages/chat.py")
+
+        nav_col3, nav_col4 = st.columns(2)
+        with nav_col3:
+            if st.button("🔔 Alerts", use_container_width=True, type="secondary"):
+                st.switch_page("pages/alerts.py")
+        with nav_col4:
+            if st.button("💳 Subscribe", use_container_width=True, type="secondary"):
+                st.switch_page("pages/subscribe.py")
+
+        st.divider()
         st.header("Settings")
 
         # Demo mode toggle (only in development)

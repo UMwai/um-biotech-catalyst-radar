@@ -4,9 +4,9 @@ Guidance for Claude Code when working with the Biotech Run-Up Radar project.
 
 ## Project Overview
 
-**Biotech Run-Up Radar** is a micro-SaaS dashboard tracking Phase 2/3 clinical trial catalysts for small-cap biotech stocks. Retail traders pay $19/month for a filtered list of upcoming data releases.
+**Biotech Run-Up Radar** is a micro-SaaS dashboard tracking Phase 2/3 clinical trial catalysts for small-cap biotech stocks. Retail traders pay $29/month for a filtered list of upcoming data releases.
 
-**Target**: 53 subscribers = $1,000 MRR
+**Target**: 35 subscribers = $1,000 MRR
 
 ## Quick Start
 
