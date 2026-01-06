@@ -1,0 +1,118 @@
+# SEC Filing Extraction Prompts
+# Per spec Section 7.1.2.B
+
+## 10-K/10-Q Financial Extraction
+
+Extract the following from this SEC {filing_type} filing for {ticker}:
+
+1. **Cash Position**: Total cash and cash equivalents (USD)
+2. **Cash Runway**: Estimated months of runway based on current burn rate
+3. **Monthly Burn Rate**: Average monthly operating expenses (USD)
+4. **Key Financial Risks**: Any disclosed going concern warnings
+
+Return as JSON:
+```json
+{
+  "cash_position_usd": <number>,
+  "cash_runway_months": <number>,
+  "monthly_burn_rate_usd": <number>,
+  "going_concern_warning": <boolean>,
+  "key_risks": ["<risk1>", "<risk2>"],
+  "extraction_confidence": <0-100>,
+  "page_references": ["pg X", "pg Y"]
+}
+```
+
+Citation format: {ticker}_{year}_{filing_type}, pg {page}
+
+---
+
+## 8-K Material Event Extraction
+
+Analyze this 8-K filing for {ticker} and extract material events:
+
+Focus on these Item types:
+- Item 1.01: Entry into Material Definitive Agreement (partnerships, licensing deals)
+- Item 7.01: Regulation FD Disclosure (trial results, pipeline updates)
+- Item 8.01: Other Events (PDUFA dates, regulatory meetings)
+
+Return as JSON:
+```json
+{
+  "events": [
+    {
+      "item_number": "1.01",
+      "event_type": "<partnership|licensing|trial_result|regulatory|other>",
+      "summary": "<one sentence summary>",
+      "catalyst_impact": "<high|medium|low>",
+      "expected_date": "<YYYY-MM-DD if mentioned>",
+      "counterparty": "<company name if applicable>",
+      "deal_value_usd": <number if disclosed>,
+      "page_reference": "pg X"
+    }
+  ],
+  "extraction_confidence": <0-100>
+}
+```
+
+Ignore:
+- Item 5.02 (executive changes) unless CEO/CMO
+- Item 4.01 (auditor changes)
+- Routine administrative filings
+
+---
+
+## Trial Design Scoring Prompt
+
+Rate this clinical trial design from 0-100 based on:
+
+Trial: {nct_id} - {title}
+Phase: {phase}
+Design: {design_description}
+
+Scoring criteria (each 0-20 points):
+1. **Randomization**: Is trial randomized? (20=yes, 0=no)
+2. **Blinding**: Double-blind (20), Single-blind (10), Open-label (0)
+3. **Control Arm**: Placebo-controlled (20), Active comparator (15), Single-arm (5)
+4. **Primary Endpoint**: Hard endpoint (20), Surrogate (10), Subjective (5)
+5. **Sample Size**: Adequately powered (20), Underpowered (5)
+
+Return as JSON:
+```json
+{
+  "total_score": <0-100>,
+  "breakdown": {
+    "randomization": <0-20>,
+    "blinding": <0-20>,
+    "control_arm": <0-20>,
+    "endpoint_quality": <0-20>,
+    "sample_size": <0-20>
+  },
+  "strengths": ["<strength1>"],
+  "weaknesses": ["<weakness1>"],
+  "confidence": <0-100>
+}
+```
+
+---
+
+## Conviction Score Algorithm
+
+Score = weighted sum of:
+- days_to_catalyst (30%): Closer = higher score
+- cash_runway (20%): >18 months = high, <6 months = low (unless funded)
+- trial_quality (25%): Design score from above
+- materiality (25%): Phase 3 > Phase 2, PDUFA > readout
+
+Formula:
+```
+days_score = max(0, 100 - (days_until / 90) * 100)
+runway_score = min(100, cash_runway_months * 5)
+quality_score = trial_design_score
+materiality_score = phase_weight * event_weight
+
+conviction = 0.30 * days_score + 0.20 * runway_score + 0.25 * quality_score + 0.25 * materiality_score
+```
+
+Phase weights: Phase 3 = 100, Phase 2 = 60, Phase 1 = 20
+Event weights: PDUFA = 100, AdCom = 90, Readout = 80, Update = 40

@@ -11,7 +11,7 @@ Example queries:
 """
 
 import streamlit as st
-from ui.chat_agent import render_chat_agent, clear_chat_history
+from ui.components.chatbot import render_chatbot
 
 
 def main():
@@ -60,7 +60,8 @@ def main():
 
         # Clear chat button
         if st.button("🗑️ Clear Chat History", use_container_width=True):
-            clear_chat_history()
+            st.session_state.messages = []
+            st.rerun()
 
         st.divider()
 
@@ -146,7 +147,7 @@ def main():
             st.info("Pro plan coming soon! Stay tuned for AI-powered insights.")
 
     # Main content - render chat agent
-    render_chat_agent()
+    render_chatbot()
 
     # Footer with tips
     st.divider()

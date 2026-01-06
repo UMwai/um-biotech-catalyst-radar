@@ -14,7 +14,7 @@ import streamlit as st
 
 from .charts import render_price_chart
 from .explainer import render_explainer
-from ..utils.historical_data import classify_therapeutic_area
+from utils.historical_data import classify_therapeutic_area
 
 
 def render_catalyst_detail_page(

@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Dict, List
 
-from ..utils.historical_data import (
+from utils.historical_data import (
     classify_therapeutic_area,
     format_run_up,
     format_success_rate,

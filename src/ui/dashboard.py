@@ -1,12 +1,139 @@
-"""Main dashboard view for Streamlit."""
+"""Main dashboard view for Streamlit.
 
-from typing import Optional
+Per spec Section 4.3:
+- First: AI-curated view ("Here are today's top opportunities")
+- Then: Personalized watchlist ("Here's what changed on YOUR stocks")
+- Always visible: 3 AI-recommended opportunities
+
+Per spec Section 4.4:
+- Free tier: <14, <30 days catalyst window
+- Paid tier: <90 days + full timeline
+"""
+
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
 
 from .charts import render_price_chart
 from .paywall import render_paywall
+from .components.timeline import render_timeline
+
+
+def render_proactive_feed(
+    insights: List[Dict[str, Any]],
+    max_free: int = 3,
+    has_access: bool = False,
+) -> None:
+    """Render AI-curated proactive feed.
+
+    Per spec: "Here are today's top opportunities" - always visible.
+
+    Args:
+        insights: List of insight dicts from FeedGenerator
+        max_free: Number of insights to show for free users
+        has_access: Whether user has paid access
+    """
+    st.markdown("### 🎯 AI Picks Today")
+    st.caption("AI-curated opportunities based on catalyst timing, cash runway, and trial quality")
+
+    if not insights:
+        st.info("Generating fresh insights... Check back in a few minutes.")
+        return
+
+    # Show top 3 always (free preview)
+    for i, insight in enumerate(insights[:max_free]):
+        _render_ai_insight_card(insight, index=i)
+
+    # Show remaining with blur/paywall for free users
+    remaining = insights[max_free:]
+    if remaining:
+        if has_access:
+            for i, insight in enumerate(remaining, start=max_free):
+                _render_ai_insight_card(insight, index=i)
+        else:
+            # Blurred preview
+            st.markdown("---")
+            st.markdown(f"**🔒 {len(remaining)} more high-conviction opportunities available**")
+            with st.container():
+                for insight in remaining[:3]:
+                    st.markdown(
+                        f"""
+                        <div style="filter: blur(4px); user-select: none; pointer-events: none;
+                                    background: #f8f9fa; padding: 15px; border-radius: 8px;
+                                    margin: 10px 0; border-left: 4px solid #6366f1;">
+                            <strong>{insight.get('ticker', 'XXXX')}</strong>: {insight.get('headline', 'Premium insight')}
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            st.info("Upgrade to unlock all insights and <90 day catalyst window")
+
+
+def _render_ai_insight_card(insight: Dict[str, Any], index: int = 0) -> None:
+    """Render a single AI insight card with conviction scoring."""
+    score = insight.get("conviction_score", 50)
+
+    # Color based on score
+    if score >= 75:
+        border_color = "#10B981"  # Green
+        badge = "🟢 High"
+    elif score >= 50:
+        border_color = "#F59E0B"  # Amber
+        badge = "🟡 Medium"
+    else:
+        border_color = "#6B7280"  # Gray
+        badge = "⚪ Low"
+
+    with st.container():
+        st.markdown(
+            f"""
+            <div style="border-left: 4px solid {border_color}; padding: 15px;
+                        background: #f8f9fa; border-radius: 0 8px 8px 0; margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 18px; font-weight: bold; color: #1F2937;">
+                        {insight.get('ticker', 'N/A')}
+                    </span>
+                    <span style="font-size: 12px; background: {'#D1FAE5' if score >= 75 else '#FEF3C7' if score >= 50 else '#F3F4F6'};
+                                 padding: 2px 8px; border-radius: 12px; color: #374151;">
+                        {badge} ({score})
+                    </span>
+                </div>
+                <p style="margin: 8px 0 4px 0; color: #4B5563; font-size: 14px;">
+                    {insight.get('headline', 'No headline')}
+                </p>
+                <p style="margin: 4px 0; color: #6B7280; font-size: 13px;">
+                    {insight.get('body', '')[:200]}{'...' if len(insight.get('body', '')) > 200 else ''}
+                </p>
+                <div style="margin-top: 8px; font-size: 11px; color: #9CA3AF;">
+                    📅 {insight.get('catalyst_type', 'Catalyst')} in {insight.get('days_until', '?')} days |
+                    💊 {insight.get('indication', 'N/A')[:30]} |
+                    📎 {insight.get('source', 'Internal')}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def load_ai_insights() -> List[Dict[str, Any]]:
+    """Load AI insights from database or generate fresh ones."""
+    try:
+        from utils.sqlite_db import get_db
+        db = get_db()
+        insights = db.get_active_insights(limit=10)
+        if insights:
+            return insights
+    except Exception:
+        pass
+
+    # Fallback: generate on-the-fly
+    try:
+        from data.feed_generator import FeedGenerator
+        generator = FeedGenerator()
+        return generator.generate_feed(days_ahead=90, limit=10, use_llm=False)
+    except Exception:
+        return []
 
 
 def render_dashboard(
@@ -23,10 +150,25 @@ def render_dashboard(
         payment_link: Stripe payment link (deprecated, using trial system now)
         user_email: User's email for trial management
     """
-    st.header("Upcoming Biotech Catalysts")
+    # AI-Curated Feed First (per spec 4.3)
+    insights = load_ai_insights()
+    has_access = is_subscribed
+
+    # Check trial status
+    if user_email and not has_access:
+        try:
+            from utils.trial_manager import is_trial_active
+            has_access = is_trial_active(user_email)
+        except Exception:
+            pass
+
+    render_proactive_feed(insights, max_free=3, has_access=has_access)
+
+    st.divider()
 
     # Summary metrics
-    col1, col2, col3 = st.columns(3)
+    st.header("📊 Catalyst Overview")
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Total Catalysts", len(df))
     with col2:
@@ -35,6 +177,9 @@ def render_dashboard(
     with col3:
         phase3_count = len(df[df["phase"] == "Phase 3"]) if "phase" in df.columns else 0
         st.metric("Phase 3 Trials", phase3_count)
+    with col4:
+        avg_score = sum(i.get("conviction_score", 50) for i in insights[:5]) / max(len(insights[:5]), 1)
+        st.metric("Avg Conviction", f"{avg_score:.0f}")
 
     st.divider()
 
@@ -64,7 +209,7 @@ def render_dashboard(
 
     # Render free preview
     st.subheader("Free Preview (Past Catalysts)")
-    _render_table(free_df[display_cols])
+    _render_insight_cards(free_df[display_cols])
 
     # Gated content
     if not gated_df.empty:
@@ -74,6 +219,11 @@ def render_dashboard(
         # Check if user has access (trial or subscription)
         # If user_email is provided, use trial system; otherwise fall back to is_subscribed
         has_access = is_subscribed
+
+        # Render Timeline (only if user has access)
+        if has_access:
+            render_timeline(gated_df)
+            st.divider()
 
         if user_email:
             # Use trial-based paywall
@@ -85,7 +235,7 @@ def render_dashboard(
             has_access = True
 
         if has_access:
-            _render_table(gated_df[display_cols])
+            _render_insight_cards(gated_df[display_cols])
 
             # Individual stock drill-down
             st.divider()
@@ -101,43 +251,53 @@ def render_dashboard(
             _render_paywall(len(gated_df), payment_link=payment_link)
 
 
-def _render_table(df: pd.DataFrame) -> None:
-    """Render a styled DataFrame table."""
+def _render_insight_cards(df: pd.DataFrame) -> None:
+    """Render data as Insight Cards."""
     if df.empty:
         st.info("No catalysts to display.")
         return
 
-    # Format columns
-    df_display = df.copy()
+    for idx, row in df.iterrows():
+        with st.container(border=True):
+            cols = st.columns([1, 4, 1])
+            
+            # Left: Ticker & Price
+            with cols[0]:
+                st.subheader(row.get("ticker", "N/A"))
+                current_price = row.get("current_price")
+                price_str = f"${current_price:.2f}" if pd.notna(current_price) else "N/A"
+                st.markdown(f"**{price_str}**")
+                
+                market_cap = row.get("market_cap")
+                mc_str = f"${market_cap/1e9:.1f}B" if pd.notna(market_cap) else "N/A"
+                st.caption(f"MC: {mc_str}")
 
-    if "completion_date" in df_display.columns:
-        df_display["completion_date"] = pd.to_datetime(df_display["completion_date"]).dt.strftime(
-            "%Y-%m-%d"
-        )
+            # Center: Insight & Timeline
+            with cols[1]:
+                days = row.get("days_until", 0)
+                phase = row.get("phase", "Unknown")
+                
+                # Mock AI Insight (In future, fetch from LLM)
+                condition = row.get("condition", "Unspecified indication")
+                insight = f"**{phase} Analysis**: Upcoming data for {condition}. "
+                if days < 30:
+                    insight += "High volatility expected as catalyst approaches."
+                elif days < 60:
+                    insight += "Accumulation zone potential."
+                else:
+                    insight += "Monitor for updates."
+                
+                st.markdown(insight)
+                
+                # Progress Bar
+                progress = max(0.0, min(1.0, 1.0 - (days / 180.0))) # Assume 180 day lookback
+                st.progress(progress, text=f"{days} days until catalyst")
+                st.caption(f"Catalyst: {row.get('completion_date', 'Unknown')}")
 
-    if "market_cap" in df_display.columns:
-        df_display["market_cap"] = df_display["market_cap"].apply(
-            lambda x: f"${x / 1e9:.2f}B" if pd.notna(x) and x > 0 else "N/A"
-        )
-
-    if "current_price" in df_display.columns:
-        df_display["current_price"] = df_display["current_price"].apply(
-            lambda x: f"${x:.2f}" if pd.notna(x) else "N/A"
-        )
-
-    # Rename columns for display
-    rename_map = {
-        "ticker": "Ticker",
-        "phase": "Phase",
-        "condition": "Condition",
-        "completion_date": "Catalyst Date",
-        "days_until": "Days Until",
-        "current_price": "Price",
-        "market_cap": "Market Cap",
-    }
-    df_display = df_display.rename(columns=rename_map)
-
-    st.dataframe(df_display, use_container_width=True, hide_index=True)
+            # Right: Action
+            with cols[2]:
+                st.button("Analyze", key=f"btn_{idx}", use_container_width=True)
+                st.button("Chart", key=f"btn_chart_{idx}", use_container_width=True)
 
 
 def _render_stock_detail(row: pd.Series) -> None:

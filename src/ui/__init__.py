@@ -2,7 +2,7 @@
 
 from .dashboard import render_dashboard
 from .charts import render_price_chart
-from .chat_agent import render_chat_agent, clear_chat_history
+from .components.chatbot import render_chatbot
 from .explainer import render_explainer, render_explainer_compact
 from .catalyst_detail import (
     render_catalyst_detail_page,
@@ -13,8 +13,7 @@ from .catalyst_detail import (
 __all__ = [
     "render_dashboard",
     "render_price_chart",
-    "render_chat_agent",
-    "clear_chat_history",
+    "render_chatbot",
     "render_explainer",
     "render_explainer_compact",
     "render_catalyst_detail_page",

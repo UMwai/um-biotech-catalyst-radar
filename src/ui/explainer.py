@@ -13,9 +13,9 @@ from datetime import datetime
 
 import streamlit as st
 
-from ..agents.explainer_agent import ExplainerAgent
-from ..utils.db import log_analytics_event, get_user_by_email
-from ..utils.notifications import get_notification_service
+from agents.explainer_agent import ExplainerAgent
+from utils.db import log_analytics_event, get_user_by_email
+from utils.notifications import get_notification_service
 
 logger = logging.getLogger(__name__)
 

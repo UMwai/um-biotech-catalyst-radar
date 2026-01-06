@@ -81,8 +81,8 @@ def main():
         st.subheader("Filters")
         phase_filter = st.multiselect(
             "Phase",
-            options=["Phase 2", "Phase 3"],
-            default=["Phase 2", "Phase 3"],
+            options=["Phase 2", "Phase 3", "Regulatory"],
+            default=["Phase 2", "Phase 3", "Regulatory"],
         )
 
         days_filter = st.slider(
@@ -145,16 +145,22 @@ def load_data(config: Config):
     """
     with st.spinner("Fetching clinical trial data..."):
         try:
-            # Step 1: Scrape ClinicalTrials.gov
-            scraper = ClinicalTrialsScraper(months_ahead=config.months_ahead)
-            df = scraper.fetch_trials()
-
+            # Step 1: Aggregate Catalysts (CT + FDA)
+            # aggregator handles fetching and mapping
+            from data.catalyst_aggregator import CatalystAggregator
+            aggregator = CatalystAggregator()
+            df = aggregator.fetch_all_catalysts()
+            
             if df.empty:
                 return df
 
-            # Step 2: Map sponsors to tickers
-            mapper = TickerMapper()
-            df = mapper.map_all(df)
+            # Rename columns to match what UI expects from enricher
+            # Enricher expects 'ticker' which we have.
+            # UI expects 'completion_date' (mapped from catalyst_date), 'condition' (mapped from description/condition)
+            # The aggregator returns 'catalyst_date'. Let's ensure compatibility.
+            df["completion_date"] = df["catalyst_date"]
+            if "condition" not in df.columns:
+                 df["condition"] = df["description"]
 
             # Filter to only matched tickers
             df = df[df["ticker"].notna()]
@@ -162,11 +168,11 @@ def load_data(config: Config):
             if df.empty:
                 return df
 
-            # Step 3: Enrich with stock data
+            # Step 2: Enrich with stock data
             enricher = StockEnricher(max_market_cap=config.max_market_cap)
             df = enricher.enrich(df)
 
-            # Step 4: Filter to small caps
+            # Step 3: Filter to small caps
             df = enricher.filter_small_caps(df)
 
             return df
