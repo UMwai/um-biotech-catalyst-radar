@@ -102,6 +102,14 @@ DEBUG              - true | false
 
 ## Related Docs
 
+### Project Specs
+- **Current status**: `specs/STATUS.md`
+- **Roadmap**: `specs/ROADMAP.md`
+- **Active work**: `specs/active/phase-4-deployment/`
+- **What's next**: `specs/planned/phase-5-growth/`
+- **Architecture**: `specs/reference/architecture/`
+
+### External
 - ClinicalTrials.gov API: https://clinicaltrials.gov/data-api/api
 - Streamlit docs: https://docs.streamlit.io
 - yfinance: https://github.com/ranaroussi/yfinance
