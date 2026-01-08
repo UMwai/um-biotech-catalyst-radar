@@ -710,6 +710,413 @@ class SQLiteDB:
                 stats[table] = cursor.fetchone()[0]
             return stats
 
+    # =========================================================================
+    # PHASE 3: USER MEMORY
+    # =========================================================================
+
+    def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user by ID."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM users_local WHERE id = ?",
+                (user_id,),
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def update_user_watchlist(self, user_id: int, watchlist_json: str) -> bool:
+        """Update user's watchlist."""
+        with self.get_connection() as conn:
+            conn.execute(
+                "UPDATE users_local SET watchlist = ? WHERE id = ?",
+                (watchlist_json, user_id),
+            )
+            return True
+
+    def update_user_preferences(self, user_id: int, preferences_json: str) -> bool:
+        """Update user's preferences."""
+        with self.get_connection() as conn:
+            conn.execute(
+                "UPDATE users_local SET preferences = ? WHERE id = ?",
+                (preferences_json, user_id),
+            )
+            return True
+
+    def update_user_last_seen_insights(self, user_id: int, insights_json: str) -> bool:
+        """Update user's last seen insights."""
+        with self.get_connection() as conn:
+            conn.execute(
+                "UPDATE users_local SET last_seen_insights = ? WHERE id = ?",
+                (insights_json, user_id),
+            )
+            return True
+
+    def get_all_users_with_watchlists(self) -> List[Dict[str, Any]]:
+        """Get all users who have watchlists."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT * FROM users_local
+                WHERE watchlist IS NOT NULL AND watchlist != '[]' AND watchlist != '{}'
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    # =========================================================================
+    # PHASE 3: CHAT SESSIONS (persistent)
+    # =========================================================================
+
+    def create_chat_session(self, user_id: int, session_id: str) -> int:
+        """Create a new chat session."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO chat_sessions (user_id, session_id)
+                VALUES (?, ?)
+                RETURNING id
+                """,
+                (user_id, session_id),
+            )
+            return cursor.fetchone()[0]
+
+    def save_chat_message(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        metadata: Optional[str] = None,
+    ) -> int:
+        """Save a chat message to a session."""
+        with self.get_connection() as conn:
+            # Get internal session ID
+            cursor = conn.execute(
+                "SELECT id FROM chat_sessions WHERE session_id = ?",
+                (session_id,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise ValueError(f"Session not found: {session_id}")
+
+            internal_session_id = row[0]
+
+            # Insert message
+            cursor = conn.execute(
+                """
+                INSERT INTO chat_messages (session_id, role, content, metadata)
+                VALUES (?, ?, ?, ?)
+                RETURNING id
+                """,
+                (internal_session_id, role, content, metadata),
+            )
+
+            # Update message count
+            conn.execute(
+                """
+                UPDATE chat_sessions
+                SET message_count = message_count + 1
+                WHERE id = ?
+                """,
+                (internal_session_id,),
+            )
+
+            return cursor.fetchone()[0]
+
+    def get_chat_messages(self, session_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get messages from a chat session."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT cm.*
+                FROM chat_messages cm
+                JOIN chat_sessions cs ON cm.session_id = cs.id
+                WHERE cs.session_id = ?
+                ORDER BY cm.created_at ASC
+                LIMIT ?
+                """,
+                (session_id, limit),
+            )
+            results = []
+            for row in cursor.fetchall():
+                item = dict(row)
+                if item.get("metadata"):
+                    item["metadata"] = json.loads(item["metadata"])
+                results.append(item)
+            return results
+
+    def get_user_chat_sessions(self, user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent chat sessions for a user."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT * FROM chat_sessions
+                WHERE user_id = ?
+                ORDER BY started_at DESC
+                LIMIT ?
+                """,
+                (user_id, limit),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def end_chat_session(self, session_id: str) -> bool:
+        """Mark a chat session as ended."""
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE chat_sessions
+                SET ended_at = CURRENT_TIMESTAMP
+                WHERE session_id = ?
+                """,
+                (session_id,),
+            )
+            return True
+
+    # =========================================================================
+    # PHASE 3: WATCHLIST ALERTS
+    # =========================================================================
+
+    def create_alert(
+        self,
+        user_id: int,
+        ticker: str,
+        alert_type: str,
+        trigger_event: str,
+        catalyst_id: Optional[int] = None,
+        severity: str = "info",
+    ) -> int:
+        """Create a watchlist alert."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO watchlist_alerts
+                (user_id, ticker, alert_type, trigger_event, catalyst_id, severity)
+                VALUES (?, ?, ?, ?, ?, ?)
+                RETURNING id
+                """,
+                (user_id, ticker, alert_type, trigger_event, catalyst_id, severity),
+            )
+            return cursor.fetchone()[0]
+
+    def get_user_alerts(
+        self,
+        user_id: int,
+        unread_only: bool = False,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Get alerts for a user."""
+        query = """
+            SELECT wa.*, cv.catalyst_type, cv.catalyst_date
+            FROM watchlist_alerts wa
+            LEFT JOIN catalysts_v2 cv ON wa.catalyst_id = cv.id
+            WHERE wa.user_id = ?
+        """
+        if unread_only:
+            query += " AND wa.acknowledged_at IS NULL"
+
+        query += " ORDER BY wa.created_at DESC LIMIT ?"
+
+        with self.get_connection() as conn:
+            cursor = conn.execute(query, (user_id, limit))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def acknowledge_alert(self, alert_id: int) -> bool:
+        """Mark an alert as acknowledged."""
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE watchlist_alerts
+                SET acknowledged_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (alert_id,),
+            )
+            return True
+
+    def get_unread_alert_count(self, user_id: int) -> int:
+        """Get count of unread alerts for a user."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT COUNT(*) FROM watchlist_alerts
+                WHERE user_id = ? AND acknowledged_at IS NULL
+                """,
+                (user_id,),
+            )
+            return cursor.fetchone()[0]
+
+    # =========================================================================
+    # PHASE 3: EXTRACTION VERIFICATIONS (dual-model)
+    # =========================================================================
+
+    def save_verification(
+        self,
+        source_type: str,
+        source_id: int,
+        field_name: str,
+        primary_model: str,
+        primary_value: str,
+        secondary_model: str,
+        secondary_value: str,
+        is_match: bool,
+        confidence_score: float,
+        needs_review: bool = False,
+    ) -> int:
+        """Save an extraction verification result."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO extraction_verifications
+                (source_type, source_id, field_name, primary_model, primary_value,
+                 secondary_model, secondary_value, is_match, confidence_score, needs_review)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING id
+                """,
+                (source_type, source_id, field_name, primary_model, primary_value,
+                 secondary_model, secondary_value, is_match, confidence_score, needs_review),
+            )
+            return cursor.fetchone()[0]
+
+    def get_verifications_needing_review(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get verifications that need manual review."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT * FROM extraction_verifications
+                WHERE needs_review = 1 AND reviewed_at IS NULL
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def mark_verification_reviewed(
+        self, verification_id: int, reviewed_by: str
+    ) -> bool:
+        """Mark a verification as reviewed."""
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE extraction_verifications
+                SET reviewed_at = CURRENT_TIMESTAMP, reviewed_by = ?
+                WHERE id = ?
+                """,
+                (reviewed_by, verification_id),
+            )
+            return True
+
+    # =========================================================================
+    # PHASE 3: BACKTEST TRACKING
+    # =========================================================================
+
+    def save_backtest_run(
+        self,
+        sample_size: int,
+        overall_accuracy: float,
+        sec_accuracy: Optional[float] = None,
+        trial_accuracy: Optional[float] = None,
+        fda_accuracy: Optional[float] = None,
+        alert_sent: bool = False,
+    ) -> int:
+        """Save a backtest run summary."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO backtest_runs
+                (sample_size, overall_accuracy, sec_accuracy, trial_accuracy,
+                 fda_accuracy, alert_sent)
+                VALUES (?, ?, ?, ?, ?, ?)
+                RETURNING id
+                """,
+                (sample_size, overall_accuracy, sec_accuracy, trial_accuracy,
+                 fda_accuracy, alert_sent),
+            )
+            return cursor.fetchone()[0]
+
+    def save_backtest_result(
+        self,
+        run_id: int,
+        source_type: str,
+        source_id: int,
+        field_name: str,
+        original_value: str,
+        reextracted_value: str,
+        is_match: bool,
+    ) -> int:
+        """Save an individual backtest result."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO backtest_results
+                (run_id, source_type, source_id, field_name, original_value,
+                 reextracted_value, is_match)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                RETURNING id
+                """,
+                (run_id, source_type, source_id, field_name, original_value,
+                 reextracted_value, is_match),
+            )
+            return cursor.fetchone()[0]
+
+    def get_recent_backtest_runs(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent backtest runs."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT * FROM backtest_runs
+                ORDER BY run_date DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_backtest_accuracy_trend(self, days: int = 30) -> List[Dict[str, Any]]:
+        """Get accuracy trend over time."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT run_date, overall_accuracy, sec_accuracy,
+                       trial_accuracy, fda_accuracy
+                FROM backtest_runs
+                WHERE run_date >= date('now', '-' || ? || ' days')
+                ORDER BY run_date ASC
+                """,
+                (days,),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_recent_extractions(self, days: int = 7) -> List[Dict[str, Any]]:
+        """Get recent extractions for backtesting."""
+        results = []
+        with self.get_connection() as conn:
+            # Get SEC filings
+            cursor = conn.execute(
+                """
+                SELECT sf.id, sf.company_id, sf.filing_type, sf.accession_number,
+                       sf.cash_runway_months, sf.cash_position_usd, sf.monthly_burn_rate_usd,
+                       sf.raw_text, 'sec_filing' as source_type
+                FROM sec_filings sf
+                WHERE sf.extracted_at >= datetime('now', '-' || ? || ' days')
+                """,
+                (days,),
+            )
+            results.extend([dict(row) for row in cursor.fetchall()])
+
+            # Get clinical trials with design scores
+            cursor = conn.execute(
+                """
+                SELECT ct.id, ct.nct_id, ct.trial_design_score,
+                       ct.trial_design_notes, 'trial' as source_type
+                FROM clinical_trials ct
+                WHERE ct.trial_design_score IS NOT NULL
+                AND ct.updated_at >= datetime('now', '-' || ? || ' days')
+                """,
+                (days,),
+            )
+            results.extend([dict(row) for row in cursor.fetchall()])
+
+        return results
+
 
 # Singleton instance for convenience
 _db_instance: Optional[SQLiteDB] = None

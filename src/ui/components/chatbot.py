@@ -1,4 +1,4 @@
-"""Analyst Chatbot Component with Source Citations.
+"""Analyst Chatbot Component with Source Citations and Memory.
 
 Per spec Section 7.1.2.F:
 - Supported queries: "What's [TICKER]'s next catalyst?", "Show me [INDICATION] trials"
@@ -6,6 +6,11 @@ Per spec Section 7.1.2.F:
 - Context: Query catalysts, insights, sec_filings tables
 - Response time: <5 seconds
 - Acceptance criteria: Answers ticker lookup correctly with source citation
+
+Phase 3 Enhancements:
+- Per-session context tracking (last_ticker, last_indication)
+- Pronoun resolution ("What about their cash runway?" -> resolves to last ticker)
+- Persistent chat history in database
 """
 
 from __future__ import annotations
@@ -18,6 +23,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import streamlit as st
+
+from utils.user_memory import SessionMemory, ChatSessionManager, UserMemory
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +48,20 @@ Provide a concise, actionable answer with source citations. If you don't have sp
 
 
 class CatalystChatAgent:
-    """Chat agent that queries catalyst database with source citations."""
+    """Chat agent that queries catalyst database with source citations.
 
-    def __init__(self, db=None):
+    Phase 3: Now includes session memory for context tracking and pronoun resolution.
+    """
+
+    def __init__(self, db=None, session_memory: Optional[SessionMemory] = None):
         """Initialize chat agent.
 
         Args:
             db: SQLiteDB instance (optional)
+            session_memory: SessionMemory instance for context tracking (optional)
         """
         self.db = db
+        self.session_memory = session_memory or SessionMemory()
         self._init_db()
 
     def _init_db(self):
@@ -243,9 +255,17 @@ class CatalystChatAgent:
         Returns:
             Response string with source citations
         """
-        # Extract entities from question
-        ticker = self.extract_ticker(question)
-        indication = self.extract_indication(question)
+        # Phase 3: Resolve pronouns using session context
+        resolved_question = self.session_memory.resolve_pronouns(question)
+        if resolved_question != question:
+            logger.info(f"Resolved pronouns: '{question}' -> '{resolved_question}'")
+
+        # Extract entities from resolved question
+        ticker = self.extract_ticker(resolved_question)
+        indication = self.extract_indication(resolved_question)
+
+        # Phase 3: Update session context with extracted entities
+        self.session_memory.update_context(ticker=ticker, indication=indication)
 
         # Query relevant data
         catalysts = self.query_catalysts(ticker=ticker, indication=indication)
@@ -363,16 +383,27 @@ class CatalystChatAgent:
         return "I can help you find:\n- **Catalyst dates**: 'What's ACAD's next catalyst?'\n- **Trial data**: 'Show me oncology trials'\n- **Financial data**: 'What's SAVA's cash runway?'\n\nAll responses include source citations from SEC filings and ClinicalTrials.gov."
 
 
-def render_chatbot(context_ticker: str = None):
-    """Render the AI Analyst chatbot interface with source citations."""
+def render_chatbot(context_ticker: str = None, user_id: Optional[int] = None):
+    """Render the AI Analyst chatbot interface with source citations.
+
+    Args:
+        context_ticker: Optional ticker to focus on
+        user_id: Optional user ID for persistent chat history (Phase 3)
+    """
     st.markdown("### 🤖 Biotech Analyst AI")
 
     if context_ticker:
         st.info(f"Context: Analyzing **{context_ticker}**")
 
-    # Initialize chat agent
+    # Phase 3: Initialize session memory for context tracking
+    if "session_memory" not in st.session_state:
+        st.session_state.session_memory = SessionMemory()
+
+    # Initialize chat agent with session memory
     if "chat_agent" not in st.session_state:
-        st.session_state.chat_agent = CatalystChatAgent()
+        st.session_state.chat_agent = CatalystChatAgent(
+            session_memory=st.session_state.session_memory
+        )
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -384,7 +415,9 @@ def render_chatbot(context_ticker: str = None):
 - **Trial searches**: "Show me Phase 3 oncology trials"
 - **Financial data**: "What's the cash runway for SAVA?"
 
-All my responses include **source citations** from SEC filings and ClinicalTrials.gov."""
+All my responses include **source citations** from SEC filings and ClinicalTrials.gov.
+
+**Tip**: I remember our conversation! After asking about a ticker, you can ask "What about their cash runway?" and I'll know which company you mean."""
 
         st.session_state.messages.append({
             "role": "assistant",

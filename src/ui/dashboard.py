@@ -8,6 +8,10 @@ Per spec Section 4.3:
 Per spec Section 4.4:
 - Free tier: <14, <30 days catalyst window
 - Paid tier: <90 days + full timeline
+
+Phase 3 Enhancements:
+- NL filter input for natural language filtering
+- Alert badge for unread watchlist alerts
 """
 
 from typing import Any, Dict, List, Optional
@@ -18,6 +22,7 @@ import streamlit as st
 from .charts import render_price_chart
 from .paywall import render_paywall
 from .components.timeline import render_timeline
+from .components.alert_badge import render_alert_summary
 
 
 def render_proactive_feed(
@@ -136,11 +141,51 @@ def load_ai_insights() -> List[Dict[str, Any]]:
         return []
 
 
+def render_nl_filter(df: pd.DataFrame) -> pd.DataFrame:
+    """Render natural language filter input and apply filters.
+
+    Args:
+        df: Original catalyst dataframe
+
+    Returns:
+        Filtered dataframe
+    """
+    from utils.nl_filter import get_nl_filter_parser
+
+    # NL Filter input
+    filter_query = st.text_input(
+        "Filter with natural language",
+        placeholder="e.g., 'obesity plays under $3B with catalyst in 30 days'",
+        key="nl_filter_input",
+        help="Try: 'Phase 3 oncology next 60 days' or 'small cap neuro with PDUFA'",
+    )
+
+    if filter_query:
+        parser = get_nl_filter_parser()
+
+        with st.spinner("Parsing filter..."):
+            filters = parser.parse_query(filter_query)
+
+        # Show applied filters
+        if filters:
+            formatted = parser.format_applied_filters(filters)
+            st.info(f"Applied: {formatted}")
+
+            # Apply filters
+            df = parser.apply_filters(df, filters)
+
+            if df.empty:
+                st.warning("No catalysts match your filter. Try broadening your search.")
+
+    return df
+
+
 def render_dashboard(
     df: pd.DataFrame,
     is_subscribed: bool = False,
     payment_link: Optional[str] = None,
     user_email: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> None:
     """Render the main catalyst dashboard.
 
@@ -149,7 +194,12 @@ def render_dashboard(
         is_subscribed: Whether user has active subscription
         payment_link: Stripe payment link (deprecated, using trial system now)
         user_email: User's email for trial management
+        user_id: User ID for alerts and watchlist (Phase 3)
     """
+    # Phase 3: Show alert summary if user has alerts
+    if user_id:
+        render_alert_summary(user_id)
+
     # AI-Curated Feed First (per spec 4.3)
     insights = load_ai_insights()
     has_access = is_subscribed
@@ -165,6 +215,9 @@ def render_dashboard(
     render_proactive_feed(insights, max_free=3, has_access=has_access)
 
     st.divider()
+
+    # Phase 3: NL Filter for quick filtering
+    df = render_nl_filter(df)
 
     # Summary metrics
     st.header("📊 Catalyst Overview")
